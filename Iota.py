@@ -784,7 +784,7 @@ def main():
                    st.success("✅ Configuration saved! Go to the 'Results' tab to see your analysis.")
 
    # Results Tab
-   with tab2:
+    with tab2:
        st.header("Core Iota Analysis Results")
        
        if hasattr(st.session_state, 'run_analysis') and st.session_state.run_analysis:
