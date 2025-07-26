@@ -2061,7 +2061,7 @@ def main():
                 st.error(f"❌ Analysis failed: {str(e)}")
                 st.exception(e)
         else:
-            st.info("👈 Please configure and run your analysis in the 'Configuration' tab first.")
+                st.info("👈 Please configure and run your analysis in the 'Configuration' tab first.")
 
                 st.write(f"**Last Window**: {last_window['start_date']} to {last_window['end_date']}")
 
