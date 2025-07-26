@@ -1597,6 +1597,12 @@ def show_help_content():
     
     ### 🎯 Iota (ι) Score
     **The main number that tells you how your strategy is doing:**
+
+    - **ι = weight × (OOS_metric - IS_median) / IS_std_dev
+    - **Where:
+    - **weight = min(1.0, √(OOS_days / 252))` - sample size adjustment
+    - **IS_median` - median of the IS slice distribution
+    - **IS_std_dev` - standard deviation of IS slice distribution
     
     - **ι = +1.0**: You're doing 1 standard deviation BETTER than expected ✅
     - **ι = 0.0**: You're performing exactly as expected ➡️
@@ -1613,13 +1619,19 @@ def show_help_content():
     **The *** markers mean:**
     - **P-value < 0.05**: The difference is statistically significant
     - **No asterisks**: Could be due to random chance
+    - **The p-value answers the question: "If my strategy actually performed no differently than random historical periods, what's the probability I would see a difference this large or larger by pure chance?" 
+**Example interpretations:**
+- **p = 0.001**: Only 0.1% chance this difference is due to random luck
+- **p = 0.050**: 5% chance this difference is due to random luck  
+- **p = 0.200**: 20% chance this difference is due to random luck
+
     
     ## Example Interpretation
     
     **Scenario**: Your strategy historically got 15% annual returns. In the last year, you got 25%.
     
     **What Iota Analysis Shows**:
-    1. Looks at 100 historical 1-year periods
+    1. Looks at 100 historical slices
     2. Finds you typically got 5% to 25% returns
     3. Calculates that 25% is normal (Iota ≈ +0.3)
     4. **Conclusion**: "Your strategy is working fine, you just had a good year"
@@ -1630,16 +1642,6 @@ def show_help_content():
     3. **Conclusion**: "Either incredible luck, or market conditions changed dramatically"
     
     ## Common Issues & Solutions
-    
-    ### ❌ "Missing dependencies" error
-    **Solution**: Make sure you have:
-    - `sim.py` file in the same folder as this app
-    - All required packages installed (scipy, pandas, numpy, etc.)
-    
-    ### ❌ "Insufficient data" error
-    **Solution**: 
-    - Use longer time periods (need at least 30 days in each period)
-    - Move your OOS start date to have more historical data
     
     ### ❌ "Could not fetch data" error
     **Solution**:
@@ -1668,6 +1670,7 @@ def show_help_content():
     2. Start with a simple strategy you understand
     3. Compare results with what you expected
     4. Remember: This tool shows you *how unusual* your recent performance is, not whether it's "good" or "bad"
+    5. Feel free to reach out to me @gobi on discord. 
     """)
     
     # Add troubleshooting section
