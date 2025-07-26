@@ -758,7 +758,7 @@ def main():
            # Submit button
             submitted = st.form_submit_button("🚀 Run Enhanced Iota Analysis", type="primary")
            
-           if submitted:
+            if submitted:
                # Validate inputs
                if not url.strip():
                    st.error("❌ Please enter a Composer Symphony URL")
