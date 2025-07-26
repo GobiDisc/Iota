@@ -2061,45 +2061,6 @@ def main():
         else:
             st.info("👈 Please configure and run your analysis in the 'Configuration' tab first.")
 
-    # Rolling Analysis Tab
-    with tab3:
-        st.header("Rolling Window Analysis")
-        
-        if hasattr(st.session_state, 'rolling_results') and st.session_state.rolling_results:
-            rolling_results = st.session_state.rolling_results
-            
-            if rolling_results.get('sufficient_data', False):
-                st.success("✅ Rolling analysis completed successfully!")
-                
-                # Display results
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Windows", rolling_results['n_windows'])
-                with col2:
-                    st.metric("Window Size", f"{rolling_results['window_size_days']}d")
-                with col3:
-                    st.metric("Risk Level", rolling_results['overfitting_risk'])
-                
-                # Show interpretation
-                interpretation = interpret_overfitting_risk(rolling_results)
-                st.info(interpretation)
-                
-                # Create and display plot
-                if hasattr(st.session_state, 'core_results'):
-                    sym_name = st.session_state.core_results['sym_name']
-                    fig = create_rolling_analysis_plot(rolling_results, sym_name)
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Show last window info
-                    if rolling_results.get('windows'):
-                        last_window = rolling_results['windows'][-1]
-                        st.write(f"**Last Window**: {last_window['start_date']} to {last_window['end_date']}")
-            else:
-                st.warning("⚠️ Insufficient data for rolling analysis")
-                st.write("**Recommendation**: Extend OOS period to at least 6 months for meaningful rolling analysis")
-        else:
-            st.info("📊 No rolling analysis data available. Please run the analysis first in the 'Results' tab with rolling analysis enabled.")
-
     # Help Tab
     with tab4:
         show_comprehensive_help()
