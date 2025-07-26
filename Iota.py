@@ -886,6 +886,7 @@ def main():
                         'window_size': window_size,
                         'step_size': step_size
                     }
+                    st.session_state.run_analysis = True
                     st.success("✅ Configuration saved! Go to the 'Results' tab to see your analysis.")
 
     # Results Tab
