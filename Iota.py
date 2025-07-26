@@ -1573,19 +1573,22 @@ def show_comprehensive_help():
         - **Consider scaling** position sizes if conservative
         - **Periodic monitoring** (monthly/quarterly reviews)
         - **Document current parameters** for future reference
+        - **Shorter OOS periods should be taken with a grain of salt
         
         ### ⚠️ If Rolling Analysis Shows Moderate Risk:
         - **Increase monitoring frequency** (weekly reviews)
         - **Review recent market conditions** for regime changes
         - **Consider minor parameter adjustments** if trend continues
         - **Prepare contingency plans** for further degradation
+        - **Shorter OOS periods should be taken with a grain of salt
         
-        ### 🚨 If Rolling Analysis Shows High/Critical Risk:
+        ### 🚨 If Rolling Analysis Shows High/Critical Decay Risk:
         - **Urgent strategy review** required
         - **Reduce position sizes** immediately
         - **Extended backtesting** with longer historical periods
         - **Parameter re-optimization** or strategy replacement
         - **Daily monitoring** until stabilization
+        - **Shorter OOS periods should be taken with a grain of salt
         
         ## Technical Parameters
         
@@ -1613,7 +1616,7 @@ def show_comprehensive_help():
         ## General Questions
         
         ### Q: What makes this different from just looking at returns?
-        **A:** This tool provides **statistical context**. Getting 30% returns is great, but if your strategy historically gets 25-35%, that's normal. If it historically gets 5-15%, then 30% might indicate something changed (good or bad).
+        **A:** This tool provides **statistical context**. Getting 30% returns is great, but if your strategy had a backtest suggesting 300%, that's not good. However, if the backtest consistently got 20-40%, then 30% means your strategy doesn't look overfit. That's excellent (and honestly, pretty rare)!
         
         ### Q: Can this predict future performance?
         **A:** **No.** This is a **retrospective analysis tool**. It tells you how unusual your recent performance has been relative to history, but cannot predict what will happen next.
@@ -1628,7 +1631,7 @@ def show_comprehensive_help():
         
         ### Q: What's a "good" iota score?
         **A:** 
-        - **ι > +0.5**: Good outperformance
+        - **ι > +0.5**: Outstanding outperformance
         - **ι ≈ 0**: Performing as expected (this is actually good!)
         - **ι < -0.5**: Concerning underperformance
         - **Remember**: ι = 0 means your strategy is working exactly as the backtest suggested
@@ -1692,12 +1695,6 @@ def show_comprehensive_help():
         
         ## Best Practices
         
-        ### Q: How often should I run this analysis?
-        **A:**
-        - **New strategies**: Weekly for first 3 months
-        - **Established strategies**: Monthly
-        - **After major market events**: As needed
-        - **Before scaling up**: Always run fresh analysis
         
         ### Q: What exclusion periods should I use?
         **A:** Consider excluding:
@@ -1747,7 +1744,7 @@ def show_comprehensive_help():
         ## Contact & Support
         
         ### Q: I found a bug or have a feature request - where do I report it?
-        **A:** This is an open-source tool. For bugs or feature requests, check with your system administrator or the tool maintainer.
+        **A:** Reach out to @gobi on discord and I'd be happy to chat.
         
         ### Q: Can I use this for non-Composer strategies?
         **A:** The tool is designed for Composer symphonies, but the statistical methodology can be adapted for any return series with appropriate modifications to the data input module.
