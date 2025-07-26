@@ -1620,10 +1620,10 @@ def show_help_content():
     - **P-value < 0.05**: The difference is statistically significant
     - **No asterisks**: Could be due to random chance
     - **The p-value answers the question: "If my strategy actually performed no differently than random historical periods, what's the probability I would see a difference this large or larger by pure chance?" 
-**Example interpretations:**
-- **p = 0.001**: Only 0.1% chance this difference is due to random luck
-- **p = 0.050**: 5% chance this difference is due to random luck  
-- **p = 0.200**: 20% chance this difference is due to random luck
+    **Example interpretations:**
+    - **p = 0.001**: Only 0.1% chance this difference is due to random luck
+    - **p = 0.050**: 5% chance this difference is due to random luck  
+    - **p = 0.200**: 20% chance this difference is due to random luck
 
     
     ## Example Interpretation
