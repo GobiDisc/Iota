@@ -1598,11 +1598,11 @@ def show_help_content():
     ### 🎯 Iota (ι) Score
     **The main number that tells you how your strategy is doing:**
 
-    - **ι = weight × (OOS_metric - IS_median) / IS_std_dev
-    - **Where:
-    - **weight = min(1.0, √(OOS_days / 252))` - sample size adjustment
-    - **IS_median` - median of the IS slice distribution
-    - **IS_std_dev` - standard deviation of IS slice distribution
+    - ι = weight × (OOS_metric - IS_median) / IS_std_dev
+    - Where:
+    - weight = min(1.0, √(OOS_days / 252))` - sample size adjustment
+    - IS_median` - median of the IS slice distribution
+    - IS_std_dev` - standard deviation of IS slice distribution
     
     - **ι = +1.0**: You're doing 1 standard deviation BETTER than expected ✅
     - **ι = 0.0**: You're performing exactly as expected ➡️
@@ -1619,7 +1619,7 @@ def show_help_content():
     **The *** markers mean:**
     - **P-value < 0.05**: The difference is statistically significant
     - **No asterisks**: Could be due to random chance
-    - **The p-value answers the question: "If my strategy actually performed no differently than random historical periods, what's the probability I would see a difference this large or larger by pure chance?" 
+    - The p-value answers the question: "If my strategy actually performed no differently than random historical periods, what's the probability I would see a difference this large or larger by pure chance?" 
     **Example interpretations:**
     - **p = 0.001**: Only 0.1% chance this difference is due to random luck
     - **p = 0.050**: 5% chance this difference is due to random luck  
