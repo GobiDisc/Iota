@@ -756,7 +756,7 @@ def main():
            )
            
            # Submit button
-           submitted = st.form_submit_button("🚀 Run Enhanced Iota Analysis", type="primary")
+            submitted = st.form_submit_button("🚀 Run Enhanced Iota Analysis", type="primary")
            
            if submitted:
                # Validate inputs
