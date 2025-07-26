@@ -2065,7 +2065,7 @@ def main():
 
                 st.write(f"**Last Window**: {last_window['start_date']} to {last_window['end_date']}")
 
-            else:
+        else:
                 st.warning("⚠️ Insufficient data for rolling analysis")
                 st.write("**Recommendation**: Extend OOS period to at least 6 months for meaningful rolling analysis")
                 
