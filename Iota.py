@@ -780,7 +780,6 @@ def main():
                        'window_size': window_size,
                        'step_size': step_size
                    }
-                   st.session_state.run_analysis = True
                    st.success("✅ Configuration saved! Go to the 'Results' tab to see your analysis.")
 
    # Results Tab
@@ -1903,7 +1902,6 @@ def main():
                         'window_size': window_size,
                         'step_size': step_size
                     }
-                    st.session_state.run_analysis = True
                     st.success("✅ Configuration saved! Go to the 'Results' tab to see your analysis.")
 
     # Results Tab
@@ -2061,14 +2059,15 @@ def main():
                 st.error(f"❌ Analysis failed: {str(e)}")
                 st.exception(e)
         else:
-            st.info("👈 Please configure and run your analysis in the 'Configuration' tab first.")
+                st.info("👈 Please configure and run your analysis in the 'Configuration' tab first.")
 
-            if 'last_window' in locals() and last_window:
                 st.write(f"**Last Window**: {last_window['start_date']} to {last_window['end_date']}")
-            else:
+
+                else:
                 st.warning("⚠️ Insufficient data for rolling analysis")
                 st.write("**Recommendation**: Extend OOS period to at least 6 months for meaningful rolling analysis")
-
+                
+        else:
             st.info("📊 No rolling analysis data available. Please run the analysis first in the 'Results' tab with rolling analysis enabled.")
 
     # Help Tab
