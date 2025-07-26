@@ -1396,7 +1396,7 @@ def smooth_iotas(iotas, window=3):
         smoothed.append(np.mean(iotas[start_idx:end_idx]))
     return smoothed
 
-oos_analysis(daily_ret: pd.Series, oos_start_dt: date, 
+def rolling_oos_analysis(daily_ret: pd.Series, oos_start_dt: date, 
                         is_ret: pd.Series, n_slices: int = 100, overlap: bool = True,
                         window_size: int = None, step_size: int = None, 
                         min_windows: int = 6) -> Dict[str, Any]:
