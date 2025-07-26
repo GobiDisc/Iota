@@ -2063,7 +2063,7 @@ def main():
         else:
             st.info("👈 Please configure and run your analysis in the 'Configuration' tab first.")
 
-                       st.write(f"**Last Window**: {last_window['start_date']} to {last_window['end_date']}")
+                st.write(f"**Last Window**: {last_window['start_date']} to {last_window['end_date']}")
 
             else:
                 st.warning("⚠️ Insufficient data for rolling analysis")
