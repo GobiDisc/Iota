@@ -1855,9 +1855,9 @@ def show_comprehensive_help():
     st.markdown("---")
     st.markdown("""
     <div style='text-align: center; color: #666; font-size: 0.8em; margin-top: 2rem;'>
-        <p><strong>Enhanced Iota Calculator with Rolling Analysis</strong></p>
-        <p>Autocorrelation-adjusted statistics • Overfitting detection • Interactive visualizations</p>
-        <p>Compatible with Composer Symphony • Built with Streamlit & Plotly</p>
+        <p><strong>Iota Calculator - Core and Rolling Analysis</strong></p>
+        <p>Edge persistence, overfitness, and decay risk assessment tool</p>
+        <p>Gobi 2025</p>
     </div>
     """, unsafe_allow_html=True)
 
