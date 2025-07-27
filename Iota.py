@@ -1003,6 +1003,7 @@ def main():
         }
         .critical-card {
             background-color: #f8d7da;
+            color: #721c24;
             padding: 1rem;
             border-radius: 0.5rem;
             border-left: 4px solid #dc3545;
@@ -1015,7 +1016,7 @@ def main():
     st.markdown('<h2 style="text-align: center; font-size: 1.5rem; color: #666; margin-bottom: 2rem;">Is your strategy\'s performance matching the backtest?</h2>', unsafe_allow_html=True)
     
     # Create tabs for better organization
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔧 Configuration", "📊 Results", "📊 Distributions", "📈 Rolling Analysis", "📚 Help"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔧 Configuration", "🔢 Results", "📊 Distributions", "📈 Rolling Analysis", "📚 Help"])
     
     # Configuration Tab
     with tab1:
@@ -1237,7 +1238,7 @@ def main():
 
     # Results Tab
     with tab2:
-        st.header("📊 Core Iota Analysis Results")
+                                 st.header("🔢 Core Iota Analysis Results")
         st.markdown("")  # Add spacing after header
         
         if hasattr(st.session_state, 'run_analysis') and st.session_state.run_analysis:
@@ -2104,7 +2105,7 @@ def show_comprehensive_help():
         | **LOW** | 2-4 | ℹ️ Minor inconsistencies | Periodic review |
         | **MODERATE** | 5-7 | ⚠️ Some degradation detected | Monitor closely |
         | **HIGH** | 8-11 | 🚨 Significant degradation | Consider re-assessment |
-        | **CRITICAL** | 12+ | 💀 Severe degradation | Urgent review |
+        | **CRITICAL** | 12+ | 💀 Severe degradation | Likely overfit, urgent review |
         
         ### 📈 Understanding the Rolling Plot
         
