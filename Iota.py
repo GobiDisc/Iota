@@ -1308,8 +1308,7 @@ def show_comprehensive_help():
         ## What is the Iota Calculator?
         
         The **Enhanced Iota Calculator** helps you understand whether your trading strategy is performing as expected 
-        based on historical patterns. It answers the key question: *"Is my strategy actually working, 
-        or did I just get lucky in my backtest?"*
+        based on historical patterns. It answers the key question: *"Is my strategy's performance consistent with its backtest?"*
         
         ### Key Features:
         - 📊 **Core Iota Analysis**: Compare OOS performance to historical expectations
