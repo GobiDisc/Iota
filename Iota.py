@@ -14,6 +14,7 @@ import warnings
 import re
 import io
 import contextlib
+import urllib.parse
 
 # Suppress warnings
 warnings.filterwarnings('ignore', category=RuntimeWarning, message='invalid value encountered')
@@ -215,12 +216,12 @@ def interpret_iota_directly(iota_val: float) -> str:
         return "✅ EXCELLENT: OOS >1σ above IS median"
     elif iota_val >= 0.5:
         return "👍 GOOD: OOS >0.5σ above IS median"
-    elif iota_val >= 0.1:
+    elif iota_val >= 0.25:
         return "📈 SLIGHT_IMPROVEMENT: OOS mildly above IS median"
-    elif iota_val >= -0.1:
-        return "➡️ NEUTRAL: OOS ≈ IS median"
+    elif iota_val >= -0.25:
+        return "🎯 OOS closely matches backtest"
     elif iota_val >= -0.5:
-        return "⚠️ CAUTION: OOS below IS median"
+        return "📉 OOS slightly below IS median"
     elif iota_val >= -1.0:
         return "🚨 WARNING: OOS >0.5σ below IS median"
     elif iota_val >= -2.0:
@@ -552,41 +553,40 @@ def rolling_oos_analysis(daily_ret: pd.Series, oos_start_dt: date,
         elif severely_negative > 0.1:
             degradation_score += 1
 
+    # Calculate proportion of time spent under -0.5 iota for each metric
     for metric in ['sh', 'cr', 'so']:
-        slope = metric_slopes.get(f'{metric}_slope', np.nan)
-        if np.isfinite(slope):
-            if slope < -0.15:
+        if len(metric_iotas[metric]) > 0:
+            under_threshold_proportion = np.mean(np.array(metric_iotas[metric]) < -0.5)
+            if under_threshold_proportion > 0.8:
+                degradation_score += 4
+            elif under_threshold_proportion > 0.6:
                 degradation_score += 3
-            elif slope < -0.08:
+            elif under_threshold_proportion > 0.4:
                 degradation_score += 2
-            elif slope < -0.03:
+            elif under_threshold_proportion > 0.2:
                 degradation_score += 1
-
-    for metric in ['sh', 'cr', 'so']:
-        if len(metric_iotas[metric]) > 2:
-            iota_volatility = np.std(metric_iotas[metric])
-            if iota_volatility > 0.8:
-                degradation_score += 1
-
-    for metric in ['sh', 'cr', 'so']:
-        if len(metric_iotas[metric]) >= 4:
-            first_half = metric_iotas[metric][:len(metric_iotas[metric])//2]
-            second_half = metric_iotas[metric][len(metric_iotas[metric])//2:]
-            if len(first_half) > 0 and len(second_half) > 0:
-                if np.mean(second_half) < np.mean(first_half) - 0.2:
-                    degradation_score += 1
     
-    # Assess overfitting risk
-    if degradation_score >= 12:
-        risk_level = "CRITICAL"
-    elif degradation_score >= 8:
-        risk_level = "HIGH"
-    elif degradation_score >= 5:
-        risk_level = "MODERATE"
-    elif degradation_score >= 2:
-        risk_level = "LOW"
+    # Get sophisticated risk assessment
+    sophisticated_analysis = analyze_sophisticated_decay_risk({
+        'sufficient_data': True,
+        'metric_iotas': metric_iotas
+    })
+    
+    if 'error' not in sophisticated_analysis:
+        risk_level = sophisticated_analysis['overall_risk']
+        degradation_score = sophisticated_analysis['total_risk_score']
     else:
-        risk_level = "MINIMAL"
+        # Fallback to original method
+        if degradation_score >= 12:
+            risk_level = "CRITICAL"
+        elif degradation_score >= 8:
+            risk_level = "HIGH"
+        elif degradation_score >= 5:
+            risk_level = "MODERATE"
+        elif degradation_score >= 2:
+            risk_level = "LOW"
+        else:
+            risk_level = "MINIMAL"
         
     return {
         'sufficient_data': True,
@@ -603,16 +603,274 @@ def rolling_oos_analysis(daily_ret: pd.Series, oos_start_dt: date,
         'metric_iotas': metric_iotas
     }
 
+def analyze_sophisticated_decay_risk(rolling_results: Dict[str, Any]) -> Dict[str, Any]:
+    """Advanced decay risk analysis with time spent above/below zero and area integration."""
+    if not rolling_results.get('sufficient_data', False):
+        return {"error": "Insufficient data for analysis"}
+    
+    metric_iotas = rolling_results.get('metric_iotas', {})
+    analysis = {}
+    
+    for metric_name, metric_data in metric_iotas.items():
+        if len(metric_data) == 0:
+            continue
+            
+        iotas = np.array(metric_data)
+        
+        # Time-based analysis
+        time_above_zero = np.mean(iotas > 0)
+        time_below_zero = np.mean(iotas < 0)
+        time_at_zero = np.mean(iotas == 0)
+        
+        # Magnitude analysis
+        positive_iotas = iotas[iotas > 0]
+        negative_iotas = iotas[iotas < 0]
+        
+        avg_positive_magnitude = np.mean(positive_iotas) if len(positive_iotas) > 0 else 0
+        avg_negative_magnitude = np.mean(negative_iotas) if len(negative_iotas) > 0 else 0
+        max_positive = np.max(positive_iotas) if len(positive_iotas) > 0 else 0
+        max_negative = np.min(negative_iotas) if len(negative_iotas) > 0 else 0
+        
+        # Area integration (simplified as sum of values)
+        positive_area = np.sum(positive_iotas) if len(positive_iotas) > 0 else 0
+        negative_area = np.sum(negative_iotas) if len(negative_iotas) > 0 else 0
+        net_area = positive_area + negative_area
+        
+        # Risk scoring
+        risk_score = 0
+        
+        # Time below zero penalty
+        if time_below_zero > 0.8:
+            risk_score += 4
+        elif time_below_zero > 0.6:
+            risk_score += 3
+        elif time_below_zero > 0.4:
+            risk_score += 2
+        elif time_below_zero > 0.2:
+            risk_score += 1
+        
+        # Magnitude penalty for negative performance
+        if avg_negative_magnitude < -1.5:
+            risk_score += 4
+        elif avg_negative_magnitude < -1.0:
+            risk_score += 3
+        elif avg_negative_magnitude < -0.5:
+            risk_score += 2
+        elif avg_negative_magnitude < -0.2:
+            risk_score += 1
+        
+        # Area imbalance penalty
+        area_ratio = abs(negative_area / positive_area) if positive_area != 0 else float('inf')
+        if area_ratio > 3.0:
+            risk_score += 3
+        elif area_ratio > 2.0:
+            risk_score += 2
+        elif area_ratio > 1.5:
+            risk_score += 1
+        
+        # Consistency penalty (high variance in negative performance)
+        if len(negative_iotas) > 1:
+            negative_std = np.std(negative_iotas)
+            if negative_std > 1.0:
+                risk_score += 2
+            elif negative_std > 0.5:
+                risk_score += 1
+        
+        analysis[metric_name] = {
+            'time_above_zero': time_above_zero,
+            'time_below_zero': time_below_zero,
+            'time_at_zero': time_at_zero,
+            'avg_positive_magnitude': avg_positive_magnitude,
+            'avg_negative_magnitude': avg_negative_magnitude,
+            'max_positive': max_positive,
+            'max_negative': max_negative,
+            'positive_area': positive_area,
+            'negative_area': negative_area,
+            'net_area': net_area,
+            'area_ratio': area_ratio if positive_area != 0 else float('inf'),
+            'risk_score': risk_score
+        }
+    
+    # Overall risk assessment
+    total_risk_score = sum(metric['risk_score'] for metric in analysis.values())
+    
+    if total_risk_score >= 15:
+        overall_risk = "CRITICAL"
+    elif total_risk_score >= 10:
+        overall_risk = "HIGH"
+    elif total_risk_score >= 6:
+        overall_risk = "MODERATE"
+    elif total_risk_score >= 3:
+        overall_risk = "LOW"
+    else:
+        overall_risk = "MINIMAL"
+    
+    return {
+        'metric_analysis': analysis,
+        'total_risk_score': total_risk_score,
+        'overall_risk': overall_risk
+    }
+
 def interpret_overfitting_risk(rolling_results: Dict[str, Any]) -> str:
-    """Generate basic interpretation of rolling analysis results."""
+    """Generate sophisticated interpretation of rolling analysis results."""
     if not rolling_results.get('sufficient_data', False):
         return "Insufficient data for rolling analysis (need longer OOS period)"
     
+    # Get sophisticated analysis
+    decay_analysis = analyze_sophisticated_decay_risk(rolling_results)
+    
+    if 'error' in decay_analysis:
+        return decay_analysis['error']
+    
     n_windows = rolling_results['n_windows']
-    interpretation = f"Rolling analysis completed with {n_windows} windows. "
-    interpretation += "View the rolling iota charts to see performance patterns over time."
+    overall_risk = decay_analysis['overall_risk']
+    total_risk_score = decay_analysis['total_risk_score']
+    
+    interpretation = f"**Advanced Decay Risk Analysis** ({n_windows} windows)\n\n"
+    interpretation += f"**Overall Risk Level**: {overall_risk} (Score: {total_risk_score})\n\n"
+    
+    # Add metric-specific insights
+    for metric_name, analysis in decay_analysis['metric_analysis'].items():
+        metric_display = {
+            'sh': 'Sharpe Ratio',
+            'cr': 'Cumulative Return', 
+            'so': 'Sortino Ratio'
+        }.get(metric_name, metric_name)
+        
+        interpretation += f"**{metric_display}**:\n"
+        interpretation += f"  • Time above zero: {analysis['time_above_zero']:.1%}\n"
+        interpretation += f"  • Time below zero: {analysis['time_below_zero']:.1%}\n"
+        interpretation += f"  • Avg positive magnitude: {analysis['avg_positive_magnitude']:+.2f}\n"
+        interpretation += f"  • Avg negative magnitude: {analysis['avg_negative_magnitude']:+.2f}\n"
+        interpretation += f"  • Area ratio (neg/pos): {analysis['area_ratio']:.2f}\n"
+        interpretation += f"  • Risk score: {analysis['risk_score']}\n\n"
     
     return interpretation
+
+def create_distribution_histograms(ar_is_values, sh_is_values, cr_is_values, so_is_values, ar_oos, sh_oos, cr_oos, so_oos, symphony_name: str, n_oos_days: int = None):
+    """Create histogram plots showing in-sample distributions with OOS values marked."""
+    
+    # Import make_subplots
+    from plotly.subplots import make_subplots
+    
+    # Define metrics and their data with proper scaling
+    metrics_data = [
+        ("Annualized Return", ar_is_values, ar_oos, lambda x: f"{x*100:+.2f}%", "Annualized Return (%)"),
+        ("Sharpe Ratio", sh_is_values, sh_oos, lambda x: f"{x:+.3f}", "Sharpe Ratio"),
+        ("Cumulative Return", cr_is_values, cr_oos, lambda x: f"{x*100:+.2f}%", "Cumulative Return (%)"),
+        ("Sortino Ratio", so_is_values, so_oos, format_sortino_output, "Sortino Ratio")
+    ]
+    
+    # Colors for different metrics
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+    
+    # Create subplots - 2x2 grid
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=[metric[0] for metric in metrics_data],
+        vertical_spacing=0.15,
+        horizontal_spacing=0.1
+    )
+    
+    # Add histograms for each metric
+    for i, (metric_name, is_values, oos_val, formatter, axis_title) in enumerate(metrics_data):
+        row = (i // 2) + 1
+        col = (i % 2) + 1
+        
+        # Scale values for percentage metrics (Annualized Return and Cumulative Return)
+        if metric_name in ["Annualized Return", "Cumulative Return"]:
+            scaled_is_values = is_values * 100
+            scaled_oos_val = oos_val * 100
+        else:
+            scaled_is_values = is_values
+            scaled_oos_val = oos_val
+        
+        # Create histogram for in-sample values
+        fig.add_trace(
+            go.Histogram(
+                x=scaled_is_values,
+                name=metric_name,
+                nbinsx=40,
+                opacity=0.7,
+                marker_color=colors[i],
+                showlegend=False,
+                hovertemplate=f"<b>{metric_name}</b><br>" +
+                             f"IS Value: %{{x}}{'%' if metric_name in ['Annualized Return', 'Cumulative Return'] else ''}<br>" +
+                             "Count: %{y}<extra></extra>"
+            ),
+            row=row, col=col
+        )
+        
+        # Calculate median for in-sample values
+        median_val = np.median(is_values)
+        if metric_name in ["Annualized Return", "Cumulative Return"]:
+            scaled_median_val = median_val * 100
+        else:
+            scaled_median_val = median_val
+        
+        # Add vertical line for median value (blue dashed line)
+        fig.add_vline(
+            x=scaled_median_val,
+            line_dash="dash",
+            line_color="blue",
+            line_width=2,
+            annotation_text=f"Median: {formatter(median_val)}",
+            annotation_position="top left",
+            annotation=dict(
+                font=dict(size=10, color="blue"),
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="blue",
+                borderwidth=1
+            ),
+            row=row, col=col
+        )
+        
+        # Add vertical line for OOS value (red dashed line)
+        fig.add_vline(
+            x=scaled_oos_val,
+            line_dash="dash",
+            line_color="red",
+            line_width=3,
+            annotation_text=f"OOS: {formatter(oos_val)}",
+            annotation_position="top right",
+            annotation=dict(
+                font=dict(size=10, color="red"),
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="red",
+                borderwidth=1
+            ),
+            row=row, col=col
+        )
+    
+    # Create title with period information
+    period_info = ""
+    if n_oos_days:
+        period_info = f" (OOS Period: {n_oos_days} days)"
+    
+    # Update layout
+    fig.update_layout(
+        title=dict(
+            text=f"{symphony_name} - In-Sample Distributions with OOS Values{period_info}",
+            x=0.5,
+            xanchor='center',
+            font=dict(size=16)
+        ),
+        height=900,
+        showlegend=False
+    )
+    
+    # Update axes labels
+    fig.update_xaxes(title_text="Value", row=1, col=1)
+    fig.update_xaxes(title_text="Value", row=1, col=2)
+    fig.update_xaxes(title_text="Value", row=2, col=1)
+    fig.update_xaxes(title_text="Value", row=2, col=2)
+    
+    fig.update_yaxes(title_text="Frequency", row=1, col=1)
+    fig.update_yaxes(title_text="Frequency", row=1, col=2)
+    fig.update_yaxes(title_text="Frequency", row=2, col=1)
+    fig.update_yaxes(title_text="Frequency", row=2, col=2)
+    
+    return fig
 
 def create_rolling_analysis_plot(rolling_results: Dict[str, Any], symphony_name: str) -> go.Figure:
     """Create interactive Plotly plot for rolling analysis."""
@@ -673,9 +931,9 @@ def create_rolling_analysis_plot(rolling_results: Dict[str, Any], symphony_name:
     fig.add_hline(y=0, line_dash="solid", line_color="gray", 
                   annotation_text="Neutral Performance", annotation_position="bottom right")
     fig.add_hline(y=0.5, line_dash="dot", line_color="lightgreen", 
-                  annotation_text="Good Performance (+0.5σ)", annotation_position="top right")
+                  annotation_text="Overperformance (+0.5σ)", annotation_position="top right")
     fig.add_hline(y=-0.5, line_dash="dot", line_color="lightcoral", 
-                  annotation_text="Poor Performance (-0.5σ)", annotation_position="bottom right")
+                  annotation_text="Underperformance (-0.5σ)", annotation_position="bottom right")
     
     # Update layout
     n_windows = rolling_results.get('n_windows', 0)
@@ -688,6 +946,7 @@ def create_rolling_analysis_plot(rolling_results: Dict[str, Any], symphony_name:
         title=dict(
             text=f"{title_text}<br><sub>{subtitle_text}</sub>",
             x=0.5,
+            xanchor='center',
             font=dict(size=16)
         ),
         xaxis_title="Time Period (OOS)",
@@ -708,6 +967,9 @@ def create_rolling_analysis_plot(rolling_results: Dict[str, Any], symphony_name:
 
 def main():
     
+    # Initialize query parameters for sharing
+    query_params = st.query_params
+    
     # Custom CSS
     st.markdown("""
     <style>
@@ -720,6 +982,7 @@ def main():
         }
         .metric-card {
             background-color: #f0f2f6;
+            color: #333;
             padding: 1rem;
             border-radius: 0.5rem;
             border-left: 4px solid #1f77b4;
@@ -727,6 +990,7 @@ def main():
         }
         .success-card {
             background-color: #d4edda;
+            color: #155724;
             padding: 1rem;
             border-radius: 0.5rem;
             border-left: 4px solid #28a745;
@@ -751,7 +1015,7 @@ def main():
     st.markdown('<h2 style="text-align: center; font-size: 1.5rem; color: #666; margin-bottom: 2rem;">Is your strategy\'s performance matching the backtest?</h2>', unsafe_allow_html=True)
     
     # Create tabs for better organization
-    tab1, tab2, tab3, tab4 = st.tabs(["🔧 Configuration", "📊 Results", "📈 Rolling Analysis", "📚 Help"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🔧 Configuration", "📊 Results", "📊 Distributions", "📈 Rolling Analysis", "📚 Help"])
     
     # Configuration Tab
     with tab1:
@@ -762,8 +1026,10 @@ def main():
             st.subheader("📝 Required Information")
             
             # Symphony URL
+            default_url = query_params.get("url", "")
             url = st.text_input(
                 "Composer Symphony URL *",
+                value=default_url,
                 help="Enter the full URL of your Composer symphony",
                 placeholder="https://app.composer.trade/symphony/..."
             )
@@ -771,24 +1037,27 @@ def main():
             # Date configuration
             col1, col2 = st.columns(2)
             with col1:
+                default_early_date = query_params.get("early_date", "2000-01-01")
                 early_date = st.date_input(
                     "Data Start Date:",
-                    value=date(2000, 1, 1),
-                    help="How far back to fetch historical data"
+                    value=date.fromisoformat(default_early_date),
+                    help="How far back to fetch data. Will default to oldest possible date if left untouched."
                 )
             
             with col2:
+                default_today_date = query_params.get("today_date", date.today().isoformat())
                 today_date = st.date_input(
                     "Data End Date:",
-                    value=date.today(),
-                    help="End date for data fetching"
+                    value=date.fromisoformat(default_today_date),
+                    help="End date for data fetching. Will default to most recent possible date if left untouched."
                 )
             
             # OOS start date - this is crucial
+            default_oos_start = query_params.get("oos_start", (date.today() - timedelta(days=730)).isoformat())
             oos_start = st.date_input(
                 "Out-of-Sample Start Date *",
-                value=date.today() - timedelta(days=730),  # Default 2 years ago
-                help="⚠️ CRITICAL: Date when your 'live trading' or out-of-sample period begins. Everything before this is historical backtest data, everything after is 'real world' performance."
+                value=date.fromisoformat(default_oos_start),
+                help="⚠️ CRITICAL: Date when your 'live trading' or out-of-sample period begins. Everything before this is historical backtest data, everything after is 'real world' performance. This will NOT default to the OOS date indicated by Composer."
             )
             
             st.markdown("---")
@@ -797,18 +1066,20 @@ def main():
             # Analysis parameters in columns
             col1, col2 = st.columns(2)
             with col1:
+                default_n_slices = int(query_params.get("n_slices", "100"))
                 n_slices = st.number_input(
                     "Number of IS Slices:",
                     min_value=10,
                     max_value=500,
-                    value=100,
+                    value=default_n_slices,
                     help="How many historical periods to compare against (more = better statistics, slower analysis)"
                 )
             
             with col2:
+                default_overlap = query_params.get("overlap", "true").lower() == "true"
                 overlap = st.checkbox(
                     "Allow Overlapping Slices",
-                    value=True,
+                    value=default_overlap,
                     help="Whether historical comparison periods can overlap (recommended: True for more data)"
                 )
             
@@ -816,18 +1087,20 @@ def main():
             st.subheader("🔄 Rolling Analysis Parameters")
             col1, col2 = st.columns(2)
             with col1:
+                default_enable_rolling = query_params.get("enable_rolling", "true").lower() == "true"
                 enable_rolling = st.checkbox(
                     "Enable Rolling Window Analysis",
-                    value=True,
+                    value=default_enable_rolling,
                     help="Perform overfitting detection using rolling windows"
                 )
             
             with col2:
                 if enable_rolling:
+                    default_auto_window = query_params.get("auto_window", "true").lower() == "true"
                     auto_window = st.checkbox(
                         "Auto Window Size",
-                        value=True,
-                        help="Automatically determine optimal window size based on OOS period length"
+                        value=default_auto_window,
+                        help="Automatically determine optimal window size based on OOS period length. If unchecked, you'll need to hit 'Run Iota Analysis' and then fill out your preferred window parameters"
                     )
                 else:
                     auto_window = True
@@ -836,19 +1109,21 @@ def main():
             if enable_rolling and not auto_window:
                 col1, col2 = st.columns(2)
                 with col1:
+                    default_window_size = int(query_params.get("window_size", "126"))
                     window_size = st.number_input(
                         "Window Size (days):",
                         min_value=21,
                         max_value=252,
-                        value=126,
+                        value=default_window_size,
                         help="Size of each rolling window in days"
                     )
                 with col2:
+                    default_step_size = int(query_params.get("step_size", "21"))
                     step_size = st.number_input(
                         "Step Size (days):",
                         min_value=1,
                         max_value=63,
-                        value=21,
+                        value=default_step_size,
                         help="Days between window starts"
                     )
             else:
@@ -861,8 +1136,10 @@ def main():
             
             # Optional exclusion windows
             st.subheader("🚫 Exclusion Windows (Optional)")
+            default_exclusions_str = query_params.get("exclusions_str", "")
             exclusions_str = st.text_area(
                 "Exclude specific date ranges:",
+                value=default_exclusions_str,
                 help="Exclude market crashes, unusual periods, etc. Format: YYYY-MM-DD to YYYY-MM-DD, separated by commas",
                 placeholder="2020-03-01 to 2020-05-01, 2022-01-01 to 2022-02-01"
             )
@@ -895,46 +1172,64 @@ def main():
                     }
                     st.session_state.run_analysis = True
                     st.session_state.auto_switch_to_results = True
-                    st.success("✅ Configuration saved! Redirecting to Results...")
                     
-                    # Auto-navigate to Results tab using JavaScript
-                    st.markdown("""
-                    <script>
-                    // Function to click the Results tab
-                    function clickResultsTab() {
-                        // Try multiple selectors to find the tab buttons
-                        let tabButtons = document.querySelectorAll('button[role="tab"]');
-                        if (tabButtons.length === 0) {
-                            tabButtons = document.querySelectorAll('[data-testid="stTabs"] button');
-                        }
-                        if (tabButtons.length === 0) {
-                            tabButtons = document.querySelectorAll('.stTabs button');
-                        }
-                        if (tabButtons.length === 0) {
-                            tabButtons = document.querySelectorAll('div[role="tablist"] button');
-                        }
-                        
-                        // Click the second tab (Results tab)
-                        if (tabButtons.length >= 2) {
-                            tabButtons[1].click();
-                            console.log('Auto-clicked Results tab');
-                            return true;
-                        } else {
-                            console.log('Could not find tab buttons, found:', tabButtons.length);
-                            return false;
-                        }
+                    # Update URL with current parameters for sharing
+                    
+                    params = {
+                        "url": url,
+                        "early_date": early_date.isoformat(),
+                        "today_date": today_date.isoformat(),
+                        "oos_start": oos_start.isoformat(),
+                        "n_slices": str(n_slices),
+                        "overlap": str(overlap).lower(),
+                        "exclusions_str": exclusions_str,
+                        "enable_rolling": str(enable_rolling).lower(),
+                        "auto_window": str(auto_window).lower(),
                     }
+                    if window_size is not None:
+                        params["window_size"] = str(window_size)
+                    if step_size is not None:
+                        params["step_size"] = str(step_size)
                     
-                    // Try multiple times with increasing delays
-                    setTimeout(clickResultsTab, 1000);
-                    setTimeout(clickResultsTab, 2000);
-                    setTimeout(clickResultsTab, 3000);
-                    </script>
-                    """, unsafe_allow_html=True)
+                    # Set query parameters in the URL
+                    for k, v in params.items():
+                        if v:  # Only include non-empty values
+                            st.query_params[k] = str(v)
                     
-                    # Fallback: Manual navigation button
-                    st.markdown("---")
-                    st.info("🔄 **Auto-navigation in progress...** If you don't see the Results tab automatically, please manually click the '📊 Results' tab above.")
+                    # Create shareable URL for display
+                    encoded_params = []
+                    for k, v in params.items():
+                        if v:  # Only include non-empty values
+                            encoded_key = urllib.parse.quote(k)
+                            encoded_value = urllib.parse.quote(str(v))
+                            encoded_params.append(f"{encoded_key}={encoded_value}")
+                    
+                    query_string = "&".join(encoded_params)
+                    base_url = "https://iotametrics.streamlit.app/"
+                    shareable_url = f"{base_url}?{query_string}"
+                    
+                    # Store the shareable URL in session state for display outside the form
+                    st.session_state.shareable_url = shareable_url
+                    
+                    # Success message with clear navigation instructions
+                    st.success("✅ Configuration saved! Click the '📊 Results' tab above to view your analysis.")
+
+        # Display shareable URL outside the form (if available)
+        if hasattr(st.session_state, 'shareable_url') and st.session_state.shareable_url:
+            st.markdown("---")
+            st.markdown("### 🔗 Share Your Analysis")
+            st.info(f"**Shareable URL**: Copy this link to share your analysis settings with others:")
+            
+            # Create a text area for easy copying
+            st.text_area(
+                "Shareable URL (select all and copy):",
+                value=st.session_state.shareable_url,
+                height=100,
+                help="Select all text (Ctrl+A) then copy (Ctrl+C)",
+                key="shareable_url_textarea"
+            )
+            
+
 
 
 
@@ -1083,6 +1378,25 @@ def main():
                     'n_slices': len(slices)
                 }
                 
+                # Store core results in session state for other tabs
+                st.session_state.core_results = {
+                    'sym_name': sym_name,
+                    'ar_stats': ar_stats,
+                    'sh_stats': sh_stats,
+                    'cr_stats': cr_stats,
+                    'so_stats': so_stats,
+                    'ar_oos': ar_oos,
+                    'sh_oos': sh_oos,
+                    'cr_oos': cr_oos,
+                    'so_oos': so_oos,
+                    'reliability': reliability,
+                    'config': config,
+                    'ar_is_values': df["ar_is"].values,
+                    'sh_is_values': df["sh_is"].values,
+                    'cr_is_values': df["cr_is"].values,
+                    'so_is_values': df["so_is"].values
+                }
+                
                 # Display core results
                 display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats, 
                                    ar_oos, sh_oos, cr_oos, so_oos, reliability, config)
@@ -1113,8 +1427,68 @@ def main():
         else:
             st.info("👈 Please configure and run your analysis in the 'Configuration' tab first.")
 
-    # Rolling Analysis Tab
+    # Distributions Tab
     with tab3:
+        st.header("📊 In-Sample Distributions")
+        st.markdown("")  # Add spacing after header
+        
+        if hasattr(st.session_state, 'core_results') and st.session_state.core_results:
+            core_results = st.session_state.core_results
+            
+            st.success("✅ Distribution analysis ready!")
+            st.markdown("")  # Add spacing
+            
+            # Display period information
+            st.markdown("### 📅 Comparison Periods")
+            if hasattr(core_results, 'config') and core_results['config']:
+                config = core_results['config']
+                oos_start = config.get('oos_start')
+                today_date = config.get('today_date')
+                if oos_start and today_date:
+                    oos_days = (today_date - oos_start).days
+                    st.info(f"**In-Sample Period**: Historical backtest data (multiple overlapping periods)  \n**Out-of-Sample Period**: {oos_start.strftime('%Y-%m-%d')} to {today_date.strftime('%Y-%m-%d')} ({oos_days} days)")
+            
+            # Display distribution histograms
+            st.markdown("### 📈 Metric Distributions")
+            st.markdown("Histograms show the distribution of in-sample values for each metric, with red dashed lines indicating where your out-of-sample values fall.")
+            
+            # Create and display histogram
+            oos_days = None
+            if hasattr(core_results, 'config') and core_results['config']:
+                config = core_results['config']
+                oos_start = config.get('oos_start')
+                today_date = config.get('today_date')
+                if oos_start and today_date:
+                    oos_days = (today_date - oos_start).days
+            
+            fig = create_distribution_histograms(
+                core_results['ar_is_values'], 
+                core_results['sh_is_values'], 
+                core_results['cr_is_values'], 
+                core_results['so_is_values'],
+                core_results['ar_oos'], 
+                core_results['sh_oos'], 
+                core_results['cr_oos'], 
+                core_results['so_oos'],
+                core_results['sym_name'],
+                oos_days
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Add interpretation
+            st.markdown("### 🎯 Interpretation")
+            st.markdown("""
+            - **Red dashed lines**: Show where your OOS performance falls relative to the IS distribution
+            - **Histogram bars**: Show the frequency of different performance levels during the backtest period
+            - **Left of distribution**: OOS underperforming relative to backtest expectations
+            - **Right of distribution**: OOS outperforming relative to backtest expectations
+            - **Center of distribution**: OOS performance matches backtest expectations
+            """)
+        else:
+            st.info("📊 No analysis data available. Please run the analysis first in the 'Results' tab.")
+
+    # Rolling Analysis Tab
+    with tab4:
         st.header("📈 Rolling Window Analysis")
         st.markdown("")  # Add spacing after header
         
@@ -1133,28 +1507,32 @@ def main():
                 with col2:
                     st.metric("Window Size", f"{rolling_results['window_size_days']}d")
                 with col3:
-                    st.metric("Decay Risk", rolling_results['overfitting_risk'])
+                    st.metric("Decay Risk", rolling_results['overfitting_risk'], 
+                             help="Risk assessment based on proportion of time spent underperforming (-0.5 iota threshold). MINIMAL/LOW = good, MODERATE = concerning, HIGH/CRITICAL = likely overfit.")
                 
                 st.markdown("")  # Add spacing
                 
-                # Show interpretation
-                st.markdown("### 🎯 Interpretation")
+                # Display sophisticated decay risk analysis
+                st.markdown("### 🧠 Advanced Decay Risk Analysis")
                 interpretation = interpret_overfitting_risk(rolling_results)
-                st.info(interpretation)
+                st.markdown(interpretation)
+                
+                st.markdown("")  # Add spacing
                 
                 # Create and display plot
                 if hasattr(st.session_state, 'core_results'):
                     sym_name = st.session_state.core_results['sym_name']
                     
-                    st.markdown("### 📈 Rolling Performance Chart")
+                    # Center the chart section header
+                    st.markdown('<h3 style="text-align: center;">📈 Rolling Performance Chart</h3>', unsafe_allow_html=True)
                     fig = create_rolling_analysis_plot(rolling_results, sym_name)
                     st.plotly_chart(fig, use_container_width=True)
                     
-                    # Show last window info
+                    # Show last window info (centered)
                     if rolling_results.get('windows'):
                         last_window = rolling_results['windows'][-1]
                         st.markdown("")  # Add spacing
-                        st.markdown(f"**📅 Last Window**: {last_window['start_date']} to {last_window['end_date']}")
+                        st.markdown(f'<p style="text-align: center;"><strong>📅 Last Window</strong>: {last_window["start_date"]} to {last_window["end_date"]}</p>', unsafe_allow_html=True)
             else:
                 st.warning("⚠️ Insufficient data for rolling analysis")
                 st.write("**Recommendation**: Extend OOS period to at least 6 months for meaningful rolling analysis")
@@ -1162,7 +1540,7 @@ def main():
             st.info("📊 No rolling analysis data available. Please run the analysis first in the 'Results' tab with rolling analysis enabled.")
 
     # Help Tab
-    with tab4:
+    with tab5:
         show_comprehensive_help()
 
 def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats, 
@@ -1178,7 +1556,7 @@ def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats,
     st.markdown("")  # Add spacing
     
     # Metrics in columns
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     
     # Calculate average iota
     iotas = [ar_stats['iota'], sh_stats['iota'], cr_stats['iota'], so_stats['iota']]
@@ -1187,33 +1565,29 @@ def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats,
     avg_rating = iota_to_persistence_rating(avg_iota)
     
     with col1:
-        st.metric("Average Iota", f"{avg_iota:+.3f}")
+        st.metric("Composite Iota", f"{avg_iota:+.3f}", 
+                 help="Average of all metric iota values. Measures how many standard deviations your overall OOS performance differs from backtest expectations. Positive = outperforming, negative = underperforming.")
     with col2:
-        st.metric("Average Rating", f"{avg_rating}")
-    with col3:
-        st.metric("Reliability", reliability.replace("_", " "))
-    with col4:
-        sig_count = sum([ar_stats['significant'], sh_stats['significant'], 
-                        cr_stats['significant'], so_stats['significant']])
-        st.metric("Significant Metrics", f"{sig_count}/4")
+        st.metric("Composite Persistence Rating", f"{avg_rating}", 
+                 help="0-100+ scale rating of strategy persistence. 100 = strategy exactly matches backtest, <100 = strategy underperforms relative to backtest, >100 = strategy outperforms backtest.")
     
     st.markdown("")  # Add spacing after metrics
     
     # Overall interpretation with better spacing
     interpretation = interpret_iota_directly(avg_iota)
-    st.markdown("### 🎯 Overall Assessment")
+    st.markdown("### Overall Assessment")
     if avg_iota >= 0.5:
-        st.markdown(f'<div class="success-card"><strong>Overall Assessment:</strong> {interpretation}</div>', 
+        st.markdown(f'<div class="success-card" style="font-size: 1.2rem;"><strong>{interpretation}</strong></div>', 
                    unsafe_allow_html=True)
     elif avg_iota >= 0.1:
-        st.markdown(f'<div class="metric-card"><strong>Overall Assessment:</strong> {interpretation}</div>', 
+        st.markdown(f'<div class="metric-card" style="font-size: 1.2rem;"><strong>{interpretation}</strong></div>', 
                    unsafe_allow_html=True)
     elif avg_iota >= -0.1:
-        st.info(f"⚠️ Overall Assessment: {interpretation}")
+        st.markdown(f'<div class="info-card" style="font-size: 1.2rem;"><strong>⚠️ {interpretation}</strong></div>', unsafe_allow_html=True)
     elif avg_iota >= -0.5:
-        st.warning(f"⚠️ Overall Assessment: {interpretation}")
+        st.markdown(f'<div class="info-card" style="font-size: 1.2rem;"><strong>📉 {interpretation}</strong></div>', unsafe_allow_html=True)
     else:
-        st.error(f"⚠️ Overall Assessment: {interpretation}")
+        st.markdown(f'<div class="critical-card" style="font-size: 1.2rem;"><strong>⚠️ {interpretation}</strong></div>', unsafe_allow_html=True)
     
     st.markdown("---")  # Add divider before detailed metrics
     
@@ -1256,7 +1630,7 @@ def display_metric_detail(metric_name, stats_dict, oos_val, formatter):
     st.markdown("")  # Add spacing
     
     # Interpretation section
-    st.markdown("#### 🎯 Interpretation")
+    st.markdown("#### Interpretation")
     interpretation = interpret_iota_directly(stats_dict['iota'])
     if stats_dict['iota'] >= 0.5:
         st.success(f"**{interpretation}**")
@@ -1282,14 +1656,8 @@ def display_metric_detail(metric_name, stats_dict, oos_val, formatter):
         st.write(f"**IS Range (25th-75th):** {formatter(q25)} - {formatter(q75)}")
     
     with col2:
-        # P-value and significance
-        if np.isfinite(stats_dict['p_value']):
-            sig_marker = " ***" if stats_dict['significant'] else ""
-            st.write(f"**P-value:** {stats_dict['p_value']:.3f}{sig_marker}")
-            if stats_dict['significant']:
-                st.write("✅ **Statistically significant**")
-            else:
-                st.write("ℹ️ Not statistically significant")
+        # Empty column for layout balance
+        st.write("")
 
 def show_comprehensive_help():
     """Show comprehensive help and documentation from the original Iota.py."""
@@ -1339,10 +1707,16 @@ def show_comprehensive_help():
         - **Exclusion Windows**: Optional - exclude market crashes or unusual periods
         
         ### 4. 🚀 Run the Analysis
-        - Click "Run Enhanced Iota Analysis"
+        - Click "Run Iota Analysis"
         - Wait for the analysis to complete (may take 2-3 minutes)
         - View core results in the "Results" tab
         - Check rolling analysis in the "Rolling Analysis" tab
+        
+        ### 5. 🔗 Share Your Analysis
+        - After running the analysis, a shareable URL will be generated
+        - Copy the URL to share your exact configuration and results with others
+        - Anyone with the link can view the same analysis settings and results
+        - Perfect for team collaboration, peer review, or documentation
         
         ## Understanding Your Results
         
@@ -1359,13 +1733,13 @@ def show_comprehensive_help():
         - **100**: Neutral performance (matches expectations)
         - **>100**: Outperforming expectations
         - **<100**: Underperforming expectations
-        
-        ### 🔄 Overfitting Risk
-        **Rolling analysis shows if your strategy is degrading over time:**
+
+        ### 🔄 Decay Risk
+        **Rolling analysis shows if your strategy has degraded out of sample:**
         
         - **MINIMAL/LOW**: Strategy working as expected ✅
         - **MODERATE**: Some concerns, monitor closely ⚠️
-        - **HIGH/CRITICAL**: Likely overfit, consider re-optimization 🚨
+        - **HIGH/CRITICAL**: Likely overfit and/or market conditions have substantially changed, running something else 🚨
         """)
     
     with help_tab2:
@@ -1592,26 +1966,26 @@ def show_comprehensive_help():
         - Iota calculated for each window vs. historical expectations
         - Tracks how each metric performs over time
         
-        ### Step 3: Trend Detection
-        - Linear regression on iota values over time
-        - Slope indicates whether performance is improving, stable, or declining
+        ### Step 3: Performance Tracking
+        - Iota values calculated for each time window
+        - Tracks how performance compares to backtest expectations over time
         - Multiple metrics analyzed independently
         
         ### Step 4: Risk Assessment
-        - **Degradation Score**: Composite measure of performance decay
+        - **Degradation Score**: Composite measure based on time spent underperforming
         - **Risk Classification**: MINIMAL → LOW → MODERATE → HIGH → CRITICAL
-        - **Trend Analysis**: Rate of change in performance metrics
+        - **Proportion Analysis**: Percentage of time spent below performance threshold
         
         ## Interpreting Rolling Analysis Results
         
-        ### 🎯 Overfitting Risk Levels
+        ### 🎯 Decay Risk Levels
         
         | Risk Level | Degradation Score | Interpretation | Action Required |
         |------------|-------------------|----------------|-----------------|
         | **MINIMAL** | 0-1 | ✅ Consistent performance | Continue monitoring |
         | **LOW** | 2-4 | ℹ️ Minor inconsistencies | Periodic review |
         | **MODERATE** | 5-7 | ⚠️ Some degradation detected | Monitor closely |
-        | **HIGH** | 8-11 | 🚨 Significant degradation | Consider re-optimization |
+        | **HIGH** | 8-11 | 🚨 Significant degradation | Consider re-assessment |
         | **CRITICAL** | 12+ | 💀 Severe degradation | Likely overfit, urgent review |
         
         ### 📈 Understanding the Rolling Plot
@@ -1624,47 +1998,46 @@ def show_comprehensive_help():
         - **Smoothing**: 3-period moving average reduces noise
         
         **Healthy Patterns (Low Risk):**
-        - ✅ Iotas fluctuate around zero with no strong downward trend
+        - ✅ Iotas fluctuate around zero with minimal time below -0.5
         - ✅ Multiple metrics show similar, stable patterns
-        - ✅ Trend slopes near zero or slightly positive
+        - ✅ Less than 20% of time spent underperforming
         
         **Warning Patterns (Moderate Risk):**
-        - ⚠️ Gradual decline in iotas over time
-        - ⚠️ Some metrics declining while others stable
-        - ⚠️ Trend slopes between -0.05 and -0.15
+        - ⚠️ Some periods of underperformance (20-40% of time below -0.5)
+        - ⚠️ Some metrics underperforming while others stable
+        - ⚠️ Moderate proportion of time below performance threshold
         
         **Critical Patterns (High Risk):**
-        - 🚨 Sharp downward trends in multiple metrics
-        - 🚨 Iotas starting positive but ending negative
-        - 🚨 Trend slopes below -0.15
+        - 🚨 Extended periods of underperformance (40-60% of time below -0.5)
+        - 🚨 Multiple metrics consistently underperforming
+        - 🚨 High proportion of time below -0.5 threshold
         - 🚨 Wide divergence between different metrics
         
-        ### 🔍 Metric-Specific Trends
+        ### 🔍 Metric-Specific Performance
         
-        **Individual metric slopes indicate:**
-        - **Sharpe Ratio declining**: Risk-adjusted performance deteriorating
-        - **Cumulative Return declining**: Total returns falling behind expectations
-        - **Sortino Ratio declining**: Downside risk management failing
+        **Individual metric underperformance indicates:**
+        - **Sharpe Ratio under -0.5**: Risk-adjusted performance below backtest expectations
+        - **Cumulative Return under -0.5**: Total returns falling behind historical performance
+        - **Sortino Ratio under -0.5**: Downside risk management below expected levels
         
         ## Degradation Score Components
         
-        The degradation score combines multiple factors:
+        The degradation score is based on the proportion of time spent underperforming:
         
         ### 📊 Absolute Performance Penalties
         - **Severely poor performance**: Average iota < -1.5 (+4 points)
         - **Consistently poor**: Average iota < -1.0 (+3 points)
         - **Moderately poor**: Average iota < -0.5 (+2 points)
         
-        ### 📉 Trend Analysis
-        - **Rapid decline**: Slope < -0.15 (+3 points per metric)
-        - **Moderate decline**: Slope < -0.08 (+2 points per metric)
-        - **Mild decline**: Slope < -0.03 (+1 point per metric)
+        ### 📉 Underperformance Threshold Analysis
+        - **Severe underperformance**: >80% of time below -0.5 iota (+4 points per metric)
+        - **High underperformance**: >60% of time below -0.5 iota (+3 points per metric)
+        - **Moderate underperformance**: >40% of time below -0.5 iota (+2 points per metric)
+        - **Low underperformance**: >20% of time below -0.5 iota (+1 point per metric)
         
-        ### 📈 Temporal Patterns
+        ### 📈 Overall Performance Patterns
         - **Proportion below expectations**: >90% negative (+3), >75% (+2), >60% (+1)
         - **Severe underperformance**: >50% severely negative (+3)
-        - **Performance deterioration**: Second half worse than first half (+1 per metric)
-        - **High volatility**: Unstable iota patterns (+1 per metric)
         
         ## Actionable Insights
         
@@ -1725,7 +2098,7 @@ def show_comprehensive_help():
         **A:** 
         - **Core analysis**: Overall assessment of your entire OOS period
         - **Rolling analysis**: Detects **when** and **how** performance changes over time
-        - **Together**: Complete picture of strategy health and overfitting risk
+        - **Together**: Complete picture of strategy health, decay and overfitting risk
         
         ## Interpretation Questions
         
@@ -1785,13 +2158,13 @@ def show_comprehensive_help():
         ### Q: All my iotas are near zero - is this bad?
         **A:** **No!** Iotas near zero mean your strategy is performing **exactly as expected** based on historical patterns. This is actually **good** - it means your backtest was realistic and your strategy is working as designed.
         
-        ### Q: Rolling analysis shows high overfitting risk - what now?
+        ### Q: Rolling analysis shows high decay risk - what now?
         **A:**
         1. **Don't panic** - check if it's due to recent market conditions
         2. **Review strategy parameters** - may need adjustment for current market
         3. **Extend backtesting period** - include more market regimes
         4. **Consider position size reduction** - while investigating
-        5. **Monitor daily** - track if degradation continues or stabilizes
+        5. **Monitor** - track if degradation continues or stabilizes
         
         ## Best Practices
         
