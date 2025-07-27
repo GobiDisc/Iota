@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhanced Streamlit Version of Iota Calculator with Rolling Window Analysis
-Compatible with your existing sim.py and requirements.txt
-Run with: streamlit run streamlit_iota_calculator_enhanced.py
+Iota Calculator with Core and Rolling Window Analysis
 """
 
 import streamlit as st
@@ -748,8 +746,8 @@ def main():
     """, unsafe_allow_html=True)
 
     # Header
-    st.markdown('<h1 class="main-header">📊 Enhanced Iota Calculator</h1>', unsafe_allow_html=True)
-    st.markdown("**Quantify your strategy's out-of-sample performance vs. historical expectations with rolling analysis**")
+    st.markdown('<h1 class="main-header">📊 Iota Calculator</h1>', unsafe_allow_html=True)
+    st.markdown("**Is your strategy's performance matching the backtest?**")
     
     # Create tabs for better organization
     tab1, tab2, tab3, tab4 = st.tabs(["🔧 Configuration", "📊 Results", "📈 Rolling Analysis", "📚 Help"])
