@@ -1857,7 +1857,7 @@ def show_comprehensive_help():
     <div style='text-align: center; color: #666; font-size: 0.8em; margin-top: 2rem;'>
         <p><strong>Iota Calculator - Core and Rolling Analysis</strong></p>
         <p>Edge persistence, overfitness, and decay risk assessment tool</p>
-        <p>Gobi 2025</p>
+        <p>Questions? Reach out to @gobi on Discord</p>
     </div>
     """, unsafe_allow_html=True)
 
