@@ -1508,7 +1508,7 @@ def main():
                     st.metric("Window Size", f"{rolling_results['window_size_days']}d")
                 with col3:
                     st.metric("Decay Risk", rolling_results['overfitting_risk'], 
-                             help="Advanced risk assessment considering time spent above/below zero, magnitude of performance, area integration, and consistency. MINIMAL/LOW = good, MODERATE = concerning, HIGH/CRITICAL = likely overfit.")
+                             help="Advanced risk assessment: time above/below zero, performance magnitude, area integration. MINIMAL/LOW=good, HIGH/CRITICAL=likely overfit.")
                 
                 st.markdown("")  # Add spacing
                 
@@ -1665,8 +1665,8 @@ def show_comprehensive_help():
     st.header("📚 Comprehensive Iota Calculator Guide")
     
     # Create help sub-tabs
-    help_tab1, help_tab2, help_tab3, help_tab4, help_tab5 = st.tabs([
-        "🎯 Quick Start", "🧮 Methodology", "📊 Interpretation", "🔄 Rolling Analysis", "❓ FAQ"
+    help_tab1, help_tab2, help_tab3, help_tab4, help_tab5, help_tab6 = st.tabs([
+        "🎯 Quick Start", "🧮 Methodology", "📊 Interpretation", "📈 Distributions", "🔄 Rolling Analysis", "❓ FAQ"
     ])
     
     with help_tab1:
@@ -1675,14 +1675,15 @@ def show_comprehensive_help():
         st.markdown("""
         ## What is the Iota Calculator?
         
-        The **Enhanced Iota Calculator** helps you understand whether your trading strategy is performing as expected 
+        The **Iota Calculator** helps you understand whether your trading strategy is performing as expected 
         based on historical patterns. It answers the key question: *"Is my strategy's performance consistent with its backtest?"*
         
         ### Key Features:
         - 📊 **Core Iota Analysis**: Compare OOS performance to historical expectations
-        - 🔄 **Rolling Window Analysis**: Detect overfitting and performance degradation over time
+        - 📊 **Distribution Analysis**: Visualize in-sample distributions with OOS values
+        - 🔄 **Rolling Window Analysis**: Advanced decay risk assessment with sophisticated metrics
         - 📈 **Interactive Visualizations**: Track performance trends with Plotly charts
-        - 🎯 **Statistical Rigor**: Autocorrelation-adjusted p-values and confidence intervals
+        - 🎯 **Statistical Rigor**: Autocorrelation-adjusted analysis and confidence intervals
         
         ## Step-by-Step Guide
         
@@ -1703,13 +1704,14 @@ def show_comprehensive_help():
         ### 3. ⚙️ Configure Analysis Parameters
         - **Number of IS Slices**: How many historical periods to compare (100 is good default)
         - **Overlapping Slices**: Keep this True for better statistics
-        - **Rolling Analysis**: Enable for overfitting detection
+        - **Rolling Analysis**: Enable for advanced decay risk assessment
         - **Exclusion Windows**: Optional - exclude market crashes or unusual periods
         
         ### 4. 🚀 Run the Analysis
         - Click "Run Iota Analysis"
         - Wait for the analysis to complete (may take 2-3 minutes)
         - View core results in the "Results" tab
+        - Explore distributions in the "Distributions" tab
         - Check rolling analysis in the "Rolling Analysis" tab
         
         ### 5. 🔗 Share Your Analysis
@@ -1735,7 +1737,7 @@ def show_comprehensive_help():
         - **<100**: Underperforming expectations
 
         ### 🔄 Decay Risk
-        **Rolling analysis shows if your strategy has degraded out of sample:**
+        **Advanced rolling analysis shows if your strategy has degraded out of sample:**
         
         - **MINIMAL/LOW**: Strategy working as expected ✅
         - **MODERATE**: Some concerns, monitor closely ⚠️
@@ -1815,17 +1817,31 @@ def show_comprehensive_help():
         p_value_adjusted = min(1.0, p_value_raw / adjustment_factor)
         ```
         
-        ### Step 5: Rolling Window Analysis (Overfitting Detection)
+        ### Step 5: Distribution Analysis
+        **What happens:**
+        1. **Histogram creation**: In-sample distributions plotted for each metric
+        2. **OOS value marking**: Red dashed line shows where OOS performance falls
+        3. **Median reference**: Blue dashed line shows in-sample median
+        4. **Visual comparison**: Easy to see OOS performance relative to historical distribution
+        
+        **Rationale:**
+        - **Visual clarity**: Histograms make distribution shape and OOS position obvious
+        - **Intuitive interpretation**: Left of distribution = underperforming, right = outperforming
+        - **Median reference**: Shows expected performance level
+        - **Multi-metric view**: All four metrics displayed simultaneously
+        
+        ### Step 6: Rolling Window Analysis (Advanced Decay Risk Assessment)
         **What happens:**
         1. **Window creation**: OOS period divided into overlapping windows (e.g., 6-month windows with 1-month steps)
         2. **Historical comparison**: Each window compared against IS slice distribution
-        3. **Trend analysis**: Linear regression on iota values over time
-        4. **Degradation scoring**: Multiple criteria assess performance decay
+        3. **Sophisticated analysis**: Time spent above/below zero, magnitude analysis, area integration
+        4. **Advanced scoring**: Multiple factors including consistency and area imbalance
         
         **Rationale:**
         - **Overfitting detection**: Strategies that are overfit show declining performance over time
         - **Temporal granularity**: Rolling windows reveal when and how performance changes
         - **Early warning**: Identifies degradation before it becomes severe
+        - **Comprehensive assessment**: Considers both frequency and severity of underperformance
         
         ## CORE METRICS ANALYZED
         
@@ -1861,9 +1877,9 @@ def show_comprehensive_help():
         | **ι ≥ +2.0** | ~270+ | 🔥 **EXCEPTIONAL**: >2σ above median | Continue strategy, consider scaling |
         | **ι ≥ +1.0** | ~165+ | ✅ **EXCELLENT**: >1σ above median | Strong performance, monitor |
         | **ι ≥ +0.5** | ~128+ | 👍 **GOOD**: >0.5σ above median | Solid outperformance |
-        | **ι ≥ +0.1** | ~105+ | 📈 **SLIGHT_IMPROVEMENT** | Mild improvement |
-        | **-0.1 ≤ ι ≤ +0.1** | 95-105 | ➡️ **NEUTRAL**: ≈ median | Performing as expected |
-        | **ι ≤ -0.1** | ~95- | ⚠️ **CAUTION**: Below median | Monitor closely |
+        | **ι ≥ +0.25** | ~113+ | 📈 **SLIGHT_IMPROVEMENT** | Mild improvement |
+        | **-0.25 ≤ ι ≤ +0.25** | 88-113 | ➡️ **OOS closely matches backtest** | Performing as expected |
+        | **ι ≤ -0.25** | ~88- | ⚠️ **CAUTION**: Below median | Monitor closely |
         | **ι ≤ -0.5** | ~78- | 🚨 **WARNING**: >0.5σ below | Consider adjustments |
         | **ι ≤ -1.0** | ~60- | 🔴 **ALERT**: >1σ below | Significant concern |
         | **ι ≤ -2.0** | ~36- | 💀 **CRITICAL**: >2σ below | Strategy likely failing |
@@ -1941,16 +1957,118 @@ def show_comprehensive_help():
         """)
     
     with help_tab4:
+        st.subheader("📈 Distribution Analysis Guide")
+        
+        st.markdown("""
+        ## What is Distribution Analysis?
+        
+        Distribution analysis visualizes the historical in-sample performance distributions for each metric, with your out-of-sample values clearly marked for easy comparison.
+        
+        ### 🎯 Purpose
+        - **Visual Comparison**: See exactly where your OOS performance falls relative to historical patterns
+        - **Distribution Shape**: Understand the range and variability of historical performance
+        - **Intuitive Interpretation**: Left of distribution = underperforming, right = outperforming
+        - **Multi-Metric View**: Compare all four metrics simultaneously
+        
+        ## Understanding the Distribution Charts
+        
+        ### 📊 Chart Elements
+        
+        **Histogram Bars**: Show the frequency of different performance levels during the backtest period
+        - **Height**: How often that performance level occurred
+        - **Width**: Performance range for that bin
+        - **Color**: Each metric has its own color for easy identification
+        
+        **Red Dashed Line**: Your out-of-sample performance value
+        - **Position**: Shows exactly where your OOS performance falls
+        - **Relative to distribution**: Left = underperforming, right = outperforming
+        
+        **Blue Dashed Line**: In-sample median (expected performance)
+        - **Reference point**: Shows the "typical" performance level
+        - **Comparison**: How far your OOS value is from the median
+        
+        ### 📈 Metric-Specific Interpretations
+        
+        **Annualized Return**:
+        - **Left of distribution**: OOS returns below historical expectations
+        - **Right of distribution**: OOS returns above historical expectations
+        - **Units**: Percentage points (e.g., 15.2% = 15.2 percentage points)
+        
+        **Sharpe Ratio**:
+        - **Left of distribution**: OOS risk-adjusted returns below historical expectations
+        - **Right of distribution**: OOS risk-adjusted returns above historical expectations
+        - **Units**: Risk-adjusted return ratio (dimensionless)
+        
+        **Cumulative Return**:
+        - **Left of distribution**: OOS total returns below historical expectations
+        - **Right of distribution**: OOS total returns above historical expectations
+        - **Units**: Percentage points (e.g., 25.8% = 25.8 percentage points)
+        
+        **Sortino Ratio**:
+        - **Left of distribution**: OOS downside risk management below historical expectations
+        - **Right of distribution**: OOS downside risk management above historical expectations
+        - **Units**: Downside risk-adjusted return ratio (dimensionless)
+        
+        ## Interpreting Distribution Results
+        
+        ### ✅ Healthy Patterns
+        - **OOS values near median**: Performance matches historical expectations
+        - **OOS values within distribution**: Performance is within normal historical range
+        - **Consistent across metrics**: All metrics show similar relative performance
+        
+        ### ⚠️ Concerning Patterns
+        - **OOS values far left of distribution**: Significant underperformance
+        - **OOS values outside distribution**: Performance outside historical range
+        - **Inconsistent across metrics**: Some metrics performing well, others poorly
+        
+        ### 🚨 Critical Patterns
+        - **OOS values at extreme left**: Severe underperformance
+        - **Multiple metrics showing poor performance**: Systematic issues
+        - **OOS values well outside distribution**: Unusual performance requiring investigation
+        
+        ## Using Distribution Analysis
+        
+        ### 🎯 Quick Assessment
+        1. **Look at red lines**: Where do they fall relative to the histograms?
+        2. **Compare to blue lines**: How far from the median?
+        3. **Check consistency**: Are all metrics telling the same story?
+        4. **Consider magnitude**: How far outside the distribution?
+        
+        ### 📊 Detailed Analysis
+        - **Distribution shape**: Wide distributions suggest high variability
+        - **Skewness**: Asymmetric distributions indicate bias
+        - **Outliers**: Extreme values in historical data
+        - **OOS position**: Percentile rank within historical distribution
+        
+        ## Best Practices
+        
+        ### ✅ What to Look For
+        - **Consistent positioning**: All metrics showing similar relative performance
+        - **Reasonable distance**: OOS values not too far from median
+        - **Distribution coverage**: OOS values within historical range
+        
+        ### ⚠️ Warning Signs
+        - **Extreme positioning**: OOS values at distribution edges
+        - **Inconsistent patterns**: Different metrics showing opposite results
+        - **Outside distribution**: OOS values beyond historical range
+        
+        ### 🔍 Follow-up Actions
+        - **If concerning**: Run rolling analysis for temporal patterns
+        - **If critical**: Review strategy parameters and market conditions
+        - **If unusual**: Investigate specific time periods or market events
+        """)
+    
+    with help_tab5:
         st.subheader("🔄 Rolling Window Analysis Guide")
         
         st.markdown("""
         ## What is Rolling Window Analysis?
         
-        Rolling window analysis divides your out-of-sample period into multiple overlapping time windows to detect **overfitting patterns** and **performance degradation** over time.
+        Rolling window analysis divides your out-of-sample period into multiple overlapping time windows to detect **overfitting patterns** and **performance degradation** over time using sophisticated metrics.
         
         ### 🎯 Purpose
-        - **Overfitting Detection**: Overfit strategies show declining performance over time
-        - **Trend Analysis**: Identify systematic performance changes
+        - **Advanced Overfitting Detection**: Comprehensive analysis of performance patterns over time
+        - **Sophisticated Trend Analysis**: Time spent above/below zero, magnitude analysis, area integration
         - **Early Warning**: Catch degradation before it becomes severe
         - **Strategy Validation**: Confirm consistent performance vs. lucky periods
         
@@ -1971,10 +2089,10 @@ def show_comprehensive_help():
         - Tracks how performance compares to backtest expectations over time
         - Multiple metrics analyzed independently
         
-        ### Step 4: Risk Assessment
-        - **Degradation Score**: Composite measure based on time spent underperforming
+        ### Step 4: Advanced Risk Assessment
+        - **Sophisticated Scoring**: Time spent above/below zero, magnitude analysis, area integration, consistency
         - **Risk Classification**: MINIMAL → LOW → MODERATE → HIGH → CRITICAL
-        - **Proportion Analysis**: Percentage of time spent below performance threshold
+        - **Comprehensive Analysis**: Multiple factors including area imbalance and performance variance
         
         ## Interpreting Rolling Analysis Results
         
@@ -2020,24 +2138,29 @@ def show_comprehensive_help():
         - **Cumulative Return under -0.5**: Total returns falling behind historical performance
         - **Sortino Ratio under -0.5**: Downside risk management below expected levels
         
-        ## Degradation Score Components
+        ## Advanced Decay Risk Assessment Components
         
-        The degradation score is based on the proportion of time spent underperforming:
+        The sophisticated risk assessment considers multiple factors:
         
-        ### 📊 Absolute Performance Penalties
-        - **Severely poor performance**: Average iota < -1.5 (+4 points)
-        - **Consistently poor**: Average iota < -1.0 (+3 points)
-        - **Moderately poor**: Average iota < -0.5 (+2 points)
+        ### 📊 Time-Based Analysis
+        - **Time below zero**: Percentage of periods with negative iota values
+        - **Time above zero**: Percentage of periods with positive iota values
+        - **Scoring**: >80% below zero (+4), >60% (+3), >40% (+2), >20% (+1)
         
-        ### 📉 Underperformance Threshold Analysis
-        - **Severe underperformance**: >80% of time below -0.5 iota (+4 points per metric)
-        - **High underperformance**: >60% of time below -0.5 iota (+3 points per metric)
-        - **Moderate underperformance**: >40% of time below -0.5 iota (+2 points per metric)
-        - **Low underperformance**: >20% of time below -0.5 iota (+1 point per metric)
+        ### 📉 Magnitude Analysis
+        - **Average negative magnitude**: Mean of all negative iota values
+        - **Average positive magnitude**: Mean of all positive iota values
+        - **Scoring**: Avg negative < -1.5 (+4), < -1.0 (+3), < -0.5 (+2), < -0.2 (+1)
         
-        ### 📈 Overall Performance Patterns
-        - **Proportion below expectations**: >90% negative (+3), >75% (+2), >60% (+1)
-        - **Severe underperformance**: >50% severely negative (+3)
+        ### 📈 Area Integration
+        - **Positive area**: Sum of all positive iota values
+        - **Negative area**: Sum of all negative iota values
+        - **Area ratio**: Ratio of negative to positive areas
+        - **Scoring**: Area ratio > 3.0 (+3), > 2.0 (+2), > 1.5 (+1)
+        
+        ### 🔄 Consistency Analysis
+        - **Performance variance**: Standard deviation of negative performance
+        - **Scoring**: High variance in negative performance (+1-2 points)
         
         ## Actionable Insights
         
@@ -2082,7 +2205,7 @@ def show_comprehensive_help():
         - **Minimum OOS period**: 90 days for any rolling analysis
         """)
     
-    with help_tab5:
+    with help_tab6:
         st.subheader("❓ Frequently Asked Questions")
         
         st.markdown("""
@@ -2097,6 +2220,7 @@ def show_comprehensive_help():
         ### Q: Why do I need both core analysis AND rolling analysis?
         **A:** 
         - **Core analysis**: Overall assessment of your entire OOS period
+        - **Distribution analysis**: Visualize in-sample distributions with OOS values marked
         - **Rolling analysis**: Detects **when** and **how** performance changes over time
         - **Together**: Complete picture of strategy health, decay and overfitting risk
         
