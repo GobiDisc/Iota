@@ -2104,7 +2104,7 @@ def show_comprehensive_help():
         | **LOW** | 2-4 | ℹ️ Minor inconsistencies | Periodic review |
         | **MODERATE** | 5-7 | ⚠️ Some degradation detected | Monitor closely |
         | **HIGH** | 8-11 | 🚨 Significant degradation | Consider re-assessment |
-        | **CRITICAL** | 12+ | 💀 Severe degradation | Likely overfit, urgent review |
+        | **CRITICAL** | 12+ | 💀 Severe degradation | Urgent review |
         
         ### 📈 Understanding the Rolling Plot
         
