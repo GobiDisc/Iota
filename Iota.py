@@ -1122,12 +1122,15 @@ def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats,
     if avg_iota >= 0.5:
         st.markdown(f'<div class="success-card"><strong>Overall Assessment:</strong> {interpretation}</div>', 
                    unsafe_allow_html=True)
-    elif avg_iota >= -0.5:
+    elif avg_iota >= 0.1:
         st.markdown(f'<div class="metric-card"><strong>Overall Assessment:</strong> {interpretation}</div>', 
                    unsafe_allow_html=True)
+    elif avg_iota >= -0.1:
+        st.info(f"⚠️ Overall Assessment: {interpretation}")
+    elif avg_iota >= -0.5:
+        st.warning(f"⚠️ Overall Assessment: {interpretation}")
     else:
-        st.markdown(f'<div class="warning-card"><strong>Overall Assessment:</strong> {interpretation}</div>', 
-                   unsafe_allow_html=True)
+        st.error(f"⚠️ Overall Assessment: {interpretation}")
     
     # Detailed metrics
     st.subheader("📈 Detailed Metric Analysis")
@@ -1762,4 +1765,3 @@ def show_comprehensive_help():
 
 if __name__ == "__main__":
     main()
- 
