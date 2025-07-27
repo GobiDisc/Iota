@@ -707,6 +707,11 @@ def create_rolling_analysis_plot(rolling_results: Dict[str, Any], symphony_name:
 # ===== STREAMLIT APP =====
 
 def main():
+    # Auto-navigate to Results tab if requested
+    if hasattr(st.session_state, 'auto_switch_to_results') and st.session_state.auto_switch_to_results:
+        st.session_state.auto_switch_to_results = False
+        st.info("🔄 Please switch to the 'Results' tab to see your analysis.")
+    
     # Custom CSS
     st.markdown("""
     <style>
@@ -828,29 +833,16 @@ def main():
                         value=True,
                         help="Automatically determine optimal window size based on OOS period length"
                     )
+                else:
+                    auto_window = True
             
-            # Show manual window settings when auto is disabled
-            if enable_rolling and not auto_window:
-                col1, col2 = st.columns(2)
-                with col1:
-                    window_size = st.number_input(
-                        "Window Size (days):",
-                        min_value=21,
-                        max_value=252,
-                        value=126,
-                        help="Size of each rolling window in days"
-                    )
-                with col2:
-                    step_size = st.number_input(
-                        "Step Size (days):",
-                        min_value=1,
-                        max_value=63,
-                        value=21,
-                        help="Days between window starts"
-                    )
-            else:
-                window_size = None
-                step_size = None
+            # Store checkbox states in session state for use outside form
+            st.session_state.enable_rolling = enable_rolling
+            st.session_state.auto_window = auto_window
+            
+            # Initialize window size variables
+            window_size = None
+            step_size = None
             
             # Optional exclusion windows
             st.subheader("🚫 Exclusion Windows (Optional)")
@@ -886,20 +878,33 @@ def main():
                         'step_size': step_size
                     }
                     st.session_state.run_analysis = True
+                    st.session_state.auto_switch_to_results = True
                     st.success("✅ Configuration saved! Redirecting to Results...")
-                    
-                    # Auto-navigate to Results tab using JavaScript
-                    st.markdown("""
-                    <script>
-                    setTimeout(function() {
-                        // Find and click the Results tab
-                        const tabs = document.querySelectorAll('[data-testid="stTabs"] button');
-                        if (tabs.length >= 2) {
-                            tabs[1].click(); // Click the second tab (Results)
-                        }
-                    }, 1000);
-                    </script>
-                    """, unsafe_allow_html=True)
+
+    # Show manual window settings outside the form when auto is disabled
+    if hasattr(st.session_state, 'enable_rolling') and hasattr(st.session_state, 'auto_window'):
+        if st.session_state.enable_rolling and not st.session_state.auto_window:
+            st.subheader("📏 Manual Window Settings")
+            col1, col2 = st.columns(2)
+            with col1:
+                window_size = st.number_input(
+                    "Window Size (days):",
+                    min_value=21,
+                    max_value=252,
+                    value=126,
+                    help="Size of each rolling window in days"
+                )
+            with col2:
+                step_size = st.number_input(
+                    "Step Size (days):",
+                    min_value=1,
+                    max_value=63,
+                    value=21,
+                    help="Days between window starts"
+                )
+        else:
+            window_size = None
+            step_size = None
 
     # Results Tab
     with tab2:
