@@ -747,7 +747,7 @@ def main():
 
     # Header
     st.markdown('<h1 class="main-header">📊 Iota Calculator</h1>', unsafe_allow_html=True)
-    st.markdown("**Is your strategy's performance matching the backtest?**")
+    st.markdown('<h2 style="text-align: center; font-size: 1.5rem; color: #666; margin-bottom: 2rem;">Is your strategy\'s performance matching the backtest?</h2>', unsafe_allow_html=True)
     
     # Create tabs for better organization
     tab1, tab2, tab3, tab4 = st.tabs(["🔧 Configuration", "📊 Results", "📈 Rolling Analysis", "📚 Help"])
