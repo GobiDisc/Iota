@@ -1063,7 +1063,7 @@ def main():
                 with col2:
                     st.metric("Window Size", f"{rolling_results['window_size_days']}d")
                 with col3:
-                    st.metric("Risk Level", rolling_results['overfitting_risk'])
+                    st.metric("Decay Risk", rolling_results['overfitting_risk'])
                 
                 # Show interpretation
                 interpretation = interpret_overfitting_risk(rolling_results)
