@@ -828,9 +828,52 @@ def main():
                     help="Whether historical comparison periods can overlap (recommended: True for more data)"
                 )
             
-            # Initialize window size variables
-            window_size = None
-            step_size = None
+            # Rolling analysis parameters
+            st.subheader("🔄 Rolling Analysis Parameters")
+            col1, col2 = st.columns(2)
+            with col1:
+                enable_rolling = st.checkbox(
+                    "Enable Rolling Window Analysis",
+                    value=True,
+                    help="Perform overfitting detection using rolling windows"
+                )
+            
+            with col2:
+                if enable_rolling:
+                    auto_window = st.checkbox(
+                        "Auto Window Size",
+                        value=True,
+                        help="Automatically determine optimal window size based on OOS period length"
+                    )
+                else:
+                    auto_window = True
+            
+            # Show manual window settings when auto is disabled
+            if enable_rolling and not auto_window:
+                col1, col2 = st.columns(2)
+                with col1:
+                    window_size = st.number_input(
+                        "Window Size (days):",
+                        min_value=21,
+                        max_value=252,
+                        value=126,
+                        help="Size of each rolling window in days"
+                    )
+                with col2:
+                    step_size = st.number_input(
+                        "Step Size (days):",
+                        min_value=1,
+                        max_value=63,
+                        value=21,
+                        help="Days between window starts"
+                    )
+            else:
+                window_size = None
+                step_size = None
+            
+            # Note about form behavior
+            if enable_rolling and not auto_window:
+                st.info("💡 **Note**: Manual window settings will be applied when you submit the form.")
             
             # Optional exclusion windows
             st.subheader("🚫 Exclusion Windows (Optional)")
@@ -861,65 +904,16 @@ def main():
                         'n_slices': n_slices,
                         'overlap': overlap,
                         'exclusions_str': exclusions_str,
-                        'enable_rolling': True,  # Default value
-                        'auto_window': True,    # Default value
-                        'window_size': None,
-                        'step_size': None
+                        'enable_rolling': enable_rolling,
+                        'auto_window': auto_window,
+                        'window_size': window_size,
+                        'step_size': step_size
                     }
                     st.session_state.run_analysis = True
                     st.session_state.auto_switch_to_results = True
                     st.success("✅ Configuration saved! Redirecting to Results...")
 
-    # Rolling analysis parameters (outside form for better interactivity)
-    st.subheader("🔄 Rolling Analysis Parameters")
-    col1, col2 = st.columns(2)
-    with col1:
-        enable_rolling = st.checkbox(
-            "Enable Rolling Window Analysis",
-            value=True,
-            help="Perform overfitting detection using rolling windows"
-        )
-    
-    with col2:
-        if enable_rolling:
-            auto_window = st.checkbox(
-                "Auto Window Size",
-                value=True,
-                help="Automatically determine optimal window size based on OOS period length"
-            )
-        else:
-            auto_window = True
-    
-    # Show manual window settings when auto is disabled
-    if enable_rolling and not auto_window:
-        st.subheader("📏 Manual Window Settings")
-        col1, col2 = st.columns(2)
-        with col1:
-            window_size = st.number_input(
-                "Window Size (days):",
-                min_value=21,
-                max_value=252,
-                value=126,
-                help="Size of each rolling window in days"
-            )
-        with col2:
-            step_size = st.number_input(
-                "Step Size (days):",
-                min_value=1,
-                max_value=63,
-                value=21,
-                help="Days between window starts"
-            )
-    else:
-        window_size = None
-        step_size = None
-    
-    # Update the config with current values
-    if hasattr(st.session_state, 'analysis_config'):
-        st.session_state.analysis_config['enable_rolling'] = enable_rolling
-        st.session_state.analysis_config['auto_window'] = auto_window
-        st.session_state.analysis_config['window_size'] = window_size
-        st.session_state.analysis_config['step_size'] = step_size
+
 
 
 
