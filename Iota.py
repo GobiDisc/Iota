@@ -707,22 +707,6 @@ def create_rolling_analysis_plot(rolling_results: Dict[str, Any], symphony_name:
 # ===== STREAMLIT APP =====
 
 def main():
-    # Auto-navigate to Results tab if requested
-    if hasattr(st.session_state, 'auto_switch_to_results') and st.session_state.auto_switch_to_results:
-        st.session_state.auto_switch_to_results = False
-        st.info("🔄 Please switch to the 'Results' tab to see your analysis.")
-        # Add JavaScript to auto-click the Results tab
-        st.markdown("""
-        <script>
-        // Auto-click the Results tab after a short delay
-        setTimeout(function() {
-            const tabButtons = document.querySelectorAll('button[role="tab"]');
-            if (tabButtons.length >= 2) {
-                tabButtons[1].click();
-            }
-        }, 1000);
-        </script>
-        """, unsafe_allow_html=True)
     
     # Custom CSS
     st.markdown("""
@@ -912,6 +896,45 @@ def main():
                     st.session_state.run_analysis = True
                     st.session_state.auto_switch_to_results = True
                     st.success("✅ Configuration saved! Redirecting to Results...")
+                    
+                    # Auto-navigate to Results tab using JavaScript
+                    st.markdown("""
+                    <script>
+                    // Function to click the Results tab
+                    function clickResultsTab() {
+                        // Try multiple selectors to find the tab buttons
+                        let tabButtons = document.querySelectorAll('button[role="tab"]');
+                        if (tabButtons.length === 0) {
+                            tabButtons = document.querySelectorAll('[data-testid="stTabs"] button');
+                        }
+                        if (tabButtons.length === 0) {
+                            tabButtons = document.querySelectorAll('.stTabs button');
+                        }
+                        if (tabButtons.length === 0) {
+                            tabButtons = document.querySelectorAll('div[role="tablist"] button');
+                        }
+                        
+                        // Click the second tab (Results tab)
+                        if (tabButtons.length >= 2) {
+                            tabButtons[1].click();
+                            console.log('Auto-clicked Results tab');
+                            return true;
+                        } else {
+                            console.log('Could not find tab buttons, found:', tabButtons.length);
+                            return false;
+                        }
+                    }
+                    
+                    // Try multiple times with increasing delays
+                    setTimeout(clickResultsTab, 1000);
+                    setTimeout(clickResultsTab, 2000);
+                    setTimeout(clickResultsTab, 3000);
+                    </script>
+                    """, unsafe_allow_html=True)
+                    
+                    # Fallback: Manual navigation button
+                    st.markdown("---")
+                    st.info("🔄 **Auto-navigation in progress...** If you don't see the Results tab automatically, please manually click the '📊 Results' tab above.")
 
 
 
