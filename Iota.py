@@ -1508,7 +1508,7 @@ def main():
                     st.metric("Window Size", f"{rolling_results['window_size_days']}d")
                 with col3:
                     st.metric("Decay Risk", rolling_results['overfitting_risk'], 
-                             help="Advanced risk assessment: time above/below zero, performance magnitude, area integration. MINIMAL/LOW=good, HIGH/CRITICAL=likely overfit.")
+                             help="Advanced risk assessment considering time spent above/below zero, magnitude of performance, area integration, and consistency. MINIMAL/LOW = good, MODERATE = concerning, HIGH/CRITICAL = likely overfit.")
                 
                 st.markdown("")  # Add spacing
                 
