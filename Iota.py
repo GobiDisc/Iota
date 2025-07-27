@@ -829,6 +829,7 @@ def main():
                         help="Automatically determine optimal window size based on OOS period length"
                     )
             
+            # Show manual window settings when auto is disabled
             if enable_rolling and not auto_window:
                 col1, col2 = st.columns(2)
                 with col1:
@@ -860,7 +861,7 @@ def main():
             )
             
             # Submit button
-            submitted = st.form_submit_button("🚀 Run Enhanced Iota Analysis", type="primary")
+            submitted = st.form_submit_button("🚀 Run Iota Analysis", type="primary")
             
             if submitted:
                 # Validate inputs
@@ -885,7 +886,20 @@ def main():
                         'step_size': step_size
                     }
                     st.session_state.run_analysis = True
-                    st.success("✅ Configuration saved! Go to the 'Results' tab to see your analysis.")
+                    st.success("✅ Configuration saved! Redirecting to Results...")
+                    
+                    # Auto-navigate to Results tab using JavaScript
+                    st.markdown("""
+                    <script>
+                    setTimeout(function() {
+                        // Find and click the Results tab
+                        const tabs = document.querySelectorAll('[data-testid="stTabs"] button');
+                        if (tabs.length >= 2) {
+                            tabs[1].click(); // Click the second tab (Results)
+                        }
+                    }, 1000);
+                    </script>
+                    """, unsafe_allow_html=True)
 
     # Results Tab
     with tab2:
