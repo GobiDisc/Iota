@@ -861,10 +861,10 @@ def main():
                         'n_slices': n_slices,
                         'overlap': overlap,
                         'exclusions_str': exclusions_str,
-                        'enable_rolling': enable_rolling,
-                        'auto_window': auto_window,
-                        'window_size': window_size,
-                        'step_size': step_size
+                        'enable_rolling': True,  # Default value
+                        'auto_window': True,    # Default value
+                        'window_size': None,
+                        'step_size': None
                     }
                     st.session_state.run_analysis = True
                     st.session_state.auto_switch_to_results = True
