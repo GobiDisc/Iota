@@ -919,12 +919,16 @@ def main():
 
     # Results Tab
     with tab2:
-        st.header("Core Iota Analysis Results")
+        st.header("📊 Core Iota Analysis Results")
+        st.markdown("")  # Add spacing after header
         
         if hasattr(st.session_state, 'run_analysis') and st.session_state.run_analysis:
             config = st.session_state.analysis_config
             
             try:
+                # Data preparation section
+                st.markdown("### 🔄 Data Preparation")
+                
                 # Parse exclusions
                 exclusions = parse_exclusion_input(config['exclusions_str'])
                 if exclusions:
@@ -939,6 +943,7 @@ def main():
                     )
                 
                 st.success(f"✅ Successfully fetched data for strategy: **{sym_name}**")
+                st.markdown("")  # Add spacing
                 
                 with st.spinner("🧮 Calculating portfolio returns..."):
                     # Capture stdout during portfolio calculation
@@ -950,6 +955,7 @@ def main():
                 daily_ret.index = pd.to_datetime(daily_ret.index).date
                 
                 st.info(f"📈 Loaded {len(daily_ret)} days of return data")
+                st.markdown("")  # Add spacing
                 
                 # Apply exclusions
                 if exclusions:
@@ -959,6 +965,10 @@ def main():
                     removed = (~mask).sum()
                     daily_ret = daily_ret[mask]
                     st.warning(f"🚫 Excluded {removed} days across {len(exclusions)} window(s)")
+                    st.markdown("")  # Add spacing
+                
+                # Data split section
+                st.markdown("### 📊 Data Split Summary")
                 
                 # Split data
                 oos_start_dt = config['oos_start']
@@ -983,6 +993,9 @@ def main():
                 with col3:
                     reliability = assess_sample_reliability(n_is, n_oos)
                     st.metric("Reliability", reliability.replace("_", " "))
+                
+                st.markdown("---")  # Add divider before analysis
+                st.markdown("### 🧮 Core Analysis")
                 
                 with st.spinner("📊 Running core Iota analysis..."):
                     # Calculate OOS metrics
@@ -1051,8 +1064,11 @@ def main():
                 display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats, 
                                    ar_oos, sh_oos, cr_oos, so_oos, reliability, config)
                 
+                st.markdown("---")  # Add divider before rolling analysis
+                
                 # Run rolling analysis if enabled
                 if config['enable_rolling']:
+                    st.markdown("### 🔄 Rolling Window Analysis")
                     with st.spinner("🔄 Running rolling window analysis..."):
                         rolling_results = rolling_oos_analysis(
                             daily_ret, oos_start_dt, is_ret, 
@@ -1076,15 +1092,18 @@ def main():
 
     # Rolling Analysis Tab
     with tab3:
-        st.header("Rolling Window Analysis")
+        st.header("📈 Rolling Window Analysis")
+        st.markdown("")  # Add spacing after header
         
         if hasattr(st.session_state, 'rolling_results') and st.session_state.rolling_results:
             rolling_results = st.session_state.rolling_results
             
             if rolling_results.get('sufficient_data', False):
                 st.success("✅ Rolling analysis completed successfully!")
+                st.markdown("")  # Add spacing
                 
                 # Display results
+                st.markdown("### 📊 Analysis Summary")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric("Windows", rolling_results['n_windows'])
@@ -1093,20 +1112,26 @@ def main():
                 with col3:
                     st.metric("Decay Risk", rolling_results['overfitting_risk'])
                 
+                st.markdown("")  # Add spacing
+                
                 # Show interpretation
+                st.markdown("### 🎯 Interpretation")
                 interpretation = interpret_overfitting_risk(rolling_results)
                 st.info(interpretation)
                 
                 # Create and display plot
                 if hasattr(st.session_state, 'core_results'):
                     sym_name = st.session_state.core_results['sym_name']
+                    
+                    st.markdown("### 📈 Rolling Performance Chart")
                     fig = create_rolling_analysis_plot(rolling_results, sym_name)
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Show last window info
                     if rolling_results.get('windows'):
                         last_window = rolling_results['windows'][-1]
-                        st.write(f"**Last Window**: {last_window['start_date']} to {last_window['end_date']}")
+                        st.markdown("")  # Add spacing
+                        st.markdown(f"**📅 Last Window**: {last_window['start_date']} to {last_window['end_date']}")
             else:
                 st.warning("⚠️ Insufficient data for rolling analysis")
                 st.write("**Recommendation**: Extend OOS period to at least 6 months for meaningful rolling analysis")
@@ -1121,11 +1146,15 @@ def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats,
                         ar_oos, sh_oos, cr_oos, so_oos, reliability, config):
     """Display the core analysis results."""
     
+    # Header with success message
     st.success(f"🎉 Core Analysis Complete for **{sym_name}**")
+    st.markdown("---")  # Add divider
     
-    # Overall summary
+    # Overall summary section
     st.subheader("📊 Overall Summary")
+    st.markdown("")  # Add spacing
     
+    # Metrics in columns
     col1, col2, col3, col4 = st.columns(4)
     
     # Calculate average iota
@@ -1145,8 +1174,11 @@ def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats,
                         cr_stats['significant'], so_stats['significant']])
         st.metric("Significant Metrics", f"{sig_count}/4")
     
-    # Overall interpretation
+    st.markdown("")  # Add spacing after metrics
+    
+    # Overall interpretation with better spacing
     interpretation = interpret_iota_directly(avg_iota)
+    st.markdown("### 🎯 Overall Assessment")
     if avg_iota >= 0.5:
         st.markdown(f'<div class="success-card"><strong>Overall Assessment:</strong> {interpretation}</div>', 
                    unsafe_allow_html=True)
@@ -1160,8 +1192,11 @@ def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats,
     else:
         st.error(f"⚠️ Overall Assessment: {interpretation}")
     
-    # Detailed metrics
+    st.markdown("---")  # Add divider before detailed metrics
+    
+    # Detailed metrics section
     st.subheader("📈 Detailed Metric Analysis")
+    st.markdown("")  # Add spacing
     
     metrics_data = [
         ("Annualized Return", ar_stats, ar_oos, lambda x: f"{x*100:.2f}%"),
@@ -1170,13 +1205,19 @@ def display_core_results(sym_name, ar_stats, sh_stats, cr_stats, so_stats,
         ("Sortino Ratio", so_stats, so_oos, format_sortino_output)
     ]
     
-    for metric_name, stats_dict, oos_val, formatter in metrics_data:
+    for i, (metric_name, stats_dict, oos_val, formatter) in enumerate(metrics_data):
         with st.expander(f"📊 {metric_name}", expanded=True):
             display_metric_detail(metric_name, stats_dict, oos_val, formatter)
+        
+        # Add spacing between expanders (except for the last one)
+        if i < len(metrics_data) - 1:
+            st.markdown("")  # Add spacing between metric sections
 
 def display_metric_detail(metric_name, stats_dict, oos_val, formatter):
     """Display detailed analysis for a single metric."""
     
+    # Key metrics section
+    st.markdown("#### 📊 Key Metrics")
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -1189,7 +1230,10 @@ def display_metric_detail(metric_name, stats_dict, oos_val, formatter):
     with col4:
         st.metric("Persistence Rating", f"{stats_dict['persistence_rating']}")
     
-    # Interpretation
+    st.markdown("")  # Add spacing
+    
+    # Interpretation section
+    st.markdown("#### 🎯 Interpretation")
     interpretation = interpret_iota_directly(stats_dict['iota'])
     if stats_dict['iota'] >= 0.5:
         st.success(f"**{interpretation}**")
@@ -1198,7 +1242,10 @@ def display_metric_detail(metric_name, stats_dict, oos_val, formatter):
     else:
         st.warning(f"**{interpretation}**")
     
-    # Statistical details
+    st.markdown("")  # Add spacing
+    
+    # Statistical details section
+    st.markdown("#### 📈 Statistical Details")
     col1, col2 = st.columns(2)
     
     with col1:
