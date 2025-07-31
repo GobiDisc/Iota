@@ -2254,7 +2254,7 @@ def show_comprehensive_help():
         
         ### Q: Should I use overlapping or non-overlapping slices?
         **A:**
-        - **Overlapping (recommended)**: More data, better statistics, uses autocorrelation adjustment
+        - **Overlapping (recommended)**: Uses autocorrelation adjustment
         - **Non-overlapping**: Simpler statistics, less data, faster computation
         
         ### Q: How long should my OOS period be?
